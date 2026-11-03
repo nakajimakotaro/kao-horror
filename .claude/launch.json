@@ -22,6 +22,21 @@
         "127.0.0.1"
       ],
       "port": 4173
+    },
+    {
+      "name": "kao-artifact",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "preview",
+        "--outDir",
+        "dist-artifact",
+        "--port",
+        "4174",
+        "--host",
+        "127.0.0.1"
+      ],
+      "port": 4174
     }
   ]
 }

@@ -22,6 +22,8 @@ export interface ModelSpec {
 export const MODELS = (CATALOG as unknown as { models: Record<string, ModelSpec> }).models;
 
 const BASE = import.meta.env.BASE_URL;
+/** model file extension; the artifact build ships glTF JSON (VITE_MODEL_EXT=.gltf.json) */
+export const MODEL_EXT: string = import.meta.env.VITE_MODEL_EXT ?? '.glb';
 
 /**
  * Loads Blender-exported GLB models (public/models/<id>.glb). Missing models
@@ -69,7 +71,7 @@ export class Assets {
         if (!this.available?.has(id)) return null;
         return new Promise<THREE.Object3D | null>((resolve) => {
           this.loader.load(
-            `${BASE}models/${id}.glb`,
+            `${BASE}models/${id}${MODEL_EXT}`,
             (gltf) => resolve(gltf.scene),
             undefined,
             (err) => { console.warn(`[assets] failed to load ${id}`, err); resolve(null); },

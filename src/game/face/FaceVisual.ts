@@ -979,7 +979,7 @@ function loadGlb(): void {
   glbState = 'loading';
   const base = (import.meta.env?.BASE_URL as string | undefined) ?? '/';
   new GLTFLoader().load(
-    `${base}models/face_head.glb`,
+    `${base}models/face_head${(import.meta.env?.VITE_MODEL_EXT as string | undefined) ?? '.glb'}`,
     (gltf) => {
       try {
         useGlb(gltf.scene);

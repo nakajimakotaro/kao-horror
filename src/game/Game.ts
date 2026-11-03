@@ -116,6 +116,10 @@ export class Game {
       if (!locked && this.mode === 'play') this.pause();
       this.ui.setResumeHint(!locked && this.mode === 'play');
     };
+    this.input.onFreeLook = () => {
+      this.ui.setResumeHint(false);
+      this.ui.toast('マウスをドラッグして見回す（E で調べる・Esc でポーズ）');
+    };
     canvas.addEventListener('click', () => {
       if (this.mode === 'play') this.input.requestLock();
     });
@@ -874,7 +878,7 @@ export class Game {
     this.ui.setEyes(this.eyes.closed && this.eyes.lid < 0);
 
     // player
-    if (this.lying && controls && this.input.locked) {
+    if (this.lying && controls && this.input.looking) {
       const L = this.lying, sens = 0.0022 * this.settings.sensitivity;
       L.o.yaw = Math.max(L.cy - L.range * DEG, Math.min(L.cy + L.range * DEG, L.o.yaw - this.input.mouseDX * sens));
       L.o.pitch = Math.max(L.pitchMin, Math.min(85 * DEG, L.o.pitch - this.input.mouseDY * sens * (this.settings.invertY ? -1 : 1)));
@@ -908,6 +912,11 @@ export class Game {
       if (this.input.pressed('inventory')) {
         this.input.consume('inventory');
         this.openInventory();
+      }
+      // without pointer lock, Esc never unlocks → pause by key instead
+      if (this.input.freeLook && this.input.pressed('pause')) {
+        this.input.consume('pause');
+        this.pause();
       }
     } else {
       this.ui.setPrompt(null);

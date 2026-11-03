@@ -33,6 +33,13 @@ export class Input {
   mouseDY = 0;
   wheel = 0;
   locked = false;
+  /**
+   * Fallback when pointer lock is unavailable (e.g. embedded in a sandboxed
+   * iframe): look around by dragging with the mouse button held.
+   */
+  freeLook = false;
+  private everLocked = false;
+  onFreeLook: (() => void) | null = null;
   /** last key code pressed this frame (for number shortcuts) */
   lastKey: string | null = null;
   onLockChange: ((locked: boolean) => void) | null = null;
@@ -52,7 +59,7 @@ export class Input {
       this.buttons.clear();
     });
     document.addEventListener('mousemove', (e) => {
-      if (!this.locked) return;
+      if (!this.locked && !(this.freeLook && this.buttons.size > 0)) return;
       // Some browsers emit occasional huge spikes right after locking.
       if (Math.abs(e.movementX) > 400 || Math.abs(e.movementY) > 400) return;
       this.mouseDX += e.movementX;
@@ -64,8 +71,11 @@ export class Input {
     });
     window.addEventListener('mouseup', (e) => this.buttons.delete(e.button));
     window.addEventListener('wheel', (e) => (this.wheel += Math.sign(e.deltaY)), { passive: true });
+    document.addEventListener('pointerlockerror', () => this.lockFailed());
+    target.addEventListener('contextmenu', (e) => { if (this.freeLook) e.preventDefault(); });
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === this.target;
+      if (this.locked) this.everLocked = true;
       this.mouseDX = this.mouseDY = 0;
       this.onLockChange?.(this.locked);
     });
@@ -97,14 +107,29 @@ export class Input {
     return this.buttons.has(button);
   }
 
+  /** Mouse look is active (pointer locked, or the drag-to-look fallback). */
+  get looking(): boolean {
+    return this.locked || this.freeLook;
+  }
+
   requestLock(): void {
-    if (this.locked) return;
+    if (this.locked || this.freeLook) return;
+    if (!this.target.requestPointerLock) { this.lockFailed(); return; }
     try {
-      const r = this.target.requestPointerLock?.() as unknown;
-      if (r && typeof (r as Promise<void>).catch === 'function') (r as Promise<void>).catch(() => undefined);
+      const r = this.target.requestPointerLock() as unknown;
+      if (r && typeof (r as Promise<void>).catch === 'function') (r as Promise<void>).catch(() => this.lockFailed());
     } catch {
       /* the browser may refuse (e.g. cooldown after Esc); the next click retries */
+      this.lockFailed();
     }
+  }
+
+  /** Inside an iframe that never granted a lock, switch to drag-to-look. */
+  private lockFailed(): void {
+    if (this.freeLook || this.everLocked || window.top === window) return;
+    this.freeLook = true;
+    this.mouseDX = this.mouseDY = 0;
+    this.onFreeLook?.();
   }
 
   releaseLock(): void {

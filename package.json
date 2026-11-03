@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -p .",
     "assets": "node tools/build-assets.mjs",
-    "validate": "node tools/validate.mjs"
+    "validate": "node tools/validate.mjs",
+    "build:artifact": "tsc -p . && node tools/build-artifact.mjs"
   },
   "dependencies": {
     "three": "^0.187.0"

@@ -83,7 +83,7 @@ export class Player {
         this.tween = null;
         tw.resolve();
       }
-    } else if (this.canLook && input.locked) {
+    } else if (this.canLook && input.looking) {
       const s = 0.0022 * this.sensitivity;
       this.yaw -= input.mouseDX * s;
       this.pitch -= input.mouseDY * s * (this.invertY ? -1 : 1);
