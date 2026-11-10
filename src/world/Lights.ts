@@ -26,6 +26,11 @@ export class LightCtl {
     return this.def.id;
   }
 
+  /** output without flicker */
+  get steady(): number {
+    return this.on ? this.level : 0;
+  }
+
   setOn(v: boolean): this {
     this.on = v;
     return this;
@@ -118,16 +123,27 @@ export class LightManager {
     return 1;
   }
 
+  /**
+   * Point lights cast no shadows, so a light from another region shines through
+   * the walls. Only its steady level may cross: flicker would strobe the walls,
+   * ceiling and props on this side (e.g. the corridor tube behind the genkan).
+   */
+  private intensity(c: LightCtl): number {
+    const d = this.damp(c);
+    return c.def.intensity * (d < 1 ? c.steady : c.out) * d;
+  }
+
   update(dt: number, camPos: THREE.Vector3): void {
     for (const c of this.ctls.values()) c.tick(dt);
     for (const c of this.ctls.values()) {
       if (!c.real) continue;
-      c.real.intensity = c.def.intensity * c.out * this.damp(c);
+      c.real.intensity = this.intensity(c);
     }
     // nearest active pooled lights
     const active = this.pooled
-      .filter((c) => c.out > 0.01)
-      .map((c) => ({ c, d: c.pos.distanceToSquared(camPos) - (c.def.distance ?? 10) ** 2 * 0.25 }))
+      .map((c) => ({ c, i: this.intensity(c) }))
+      .filter((a) => a.i > 0.001)
+      .map(({ c, i }) => ({ c, i, d: c.pos.distanceToSquared(camPos) - (c.def.distance ?? 10) ** 2 * 0.25 }))
       .sort((a, b) => a.d - b.d)
       .slice(0, this.pool.length);
     for (let i = 0; i < this.pool.length; i++) {
@@ -137,7 +153,7 @@ export class LightManager {
       l.position.copy(a.c.pos);
       l.color.set(a.c.def.color);
       l.distance = a.c.def.distance ?? 10;
-      l.intensity = a.c.def.intensity * a.c.out * this.damp(a.c);
+      l.intensity = a.i;
     }
   }
 }
