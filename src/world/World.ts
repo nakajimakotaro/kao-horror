@@ -112,11 +112,20 @@ export class Npc {
   label: string | null = null;
   readonly head: THREE.Object3D | null;
   readonly meshes: THREE.Mesh[] = [];
+  /** the phone screen (material emit_phone), where the phone light comes from */
+  readonly screen: THREE.Mesh | null = null;
+  readonly screenCenter = new THREE.Vector3();
   private t = Math.random() * 10;
 
   constructor(readonly id: string, readonly root: THREE.Group, readonly collider: Collider) {
     this.head = root.getObjectByName('head') ?? null;
     root.traverse((o) => { if ((o as THREE.Mesh).isMesh) this.meshes.push(o as THREE.Mesh); });
+    this.screen = this.meshes.find((m) => (m.material as THREE.Material).name?.startsWith('emit_phone')) ?? null;
+    if (this.screen) {
+      const g = this.screen.geometry;
+      if (!g.boundingBox) g.computeBoundingBox();
+      g.boundingBox!.getCenter(this.screenCenter);
+    }
     root.visible = false;
     collider.enabled = false;
   }
@@ -804,9 +813,16 @@ export class World {
       const head = glow.head ?? glow.root;
       const hp = head.getWorldPosition(new THREE.Vector3());
       const yaw = glow.root.rotation.y;
-      // in front of the chest, below the chin: the phone's screen light
-      this.phoneLight.position.set(hp.x + Math.sin(yaw) * 0.28, hp.y - 0.05, hp.z + Math.cos(yaw) * 0.28);
-      this.phoneLight.intensity = 0.6 * (0.92 + Math.random() * 0.08);
+      if (glow.screen) {
+        // the phone's screen light, from the screen itself (a little off it, toward the face)
+        const sp = glow.screen.localToWorld(glow.screenCenter.clone());
+        this.phoneLight.position.copy(sp).lerp(hp.setY(hp.y + 0.1), 0.15);
+      } else {
+        // in front of the chest, below the chin
+        this.phoneLight.position.set(hp.x + Math.sin(yaw) * 0.28, hp.y - 0.05, hp.z + Math.cos(yaw) * 0.28);
+      }
+      // from the screen itself the light is much closer to the face: keep the features readable
+      this.phoneLight.intensity = (glow.screen ? 0.2 : 0.6) * (0.92 + Math.random() * 0.08);
     } else this.phoneLight.intensity = 0;
     for (const n of this.npcs.values()) {
       for (const m of n.meshes) {

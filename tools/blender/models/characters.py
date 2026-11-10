@@ -20,6 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from common import *  # noqa: E402,F401,F403
+import rig_pose  # noqa: E402
 import bmesh  # noqa: E402
 from mathutils import Matrix, Vector  # noqa: E402
 
@@ -687,25 +688,21 @@ def foot_strap(name, heel, toe, t, m, w=0.045, h=0.035, sole=0.0, width=0.02, th
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  npc_nao — 24, shoulder-length black hair tucked behind the ears, no fringe, pale.
-#  Big white T-shirt, dusty grey wide trousers, white sandals, a natural-cotton tote on
-#  the left shoulder (bell + "103" key on its strap), black watch on the left wrist,
-#  phone in the right hand (screen = emit_phone, facing her face).
+#  npc_nao — 24. The textured, rigged model in tools/blender/assets/nao/nao_rig.blend (long dark hair
+#  with a fringe, choker, a big blue-grey hoodie worn off the shoulders over a black camisole, black
+#  skirt, black tights, boots; mixamo-named bones), posed here and baked into plain meshes.
+#  Added on top: the phone (screen = emit_phone, facing her face) and the natural-cotton tote with the
+#  bell + "103" key.
 # ═════════════════════════════════════════════════════════════════════════════
+NAO_RIG = os.path.join(ROOT, "tools", "blender", "assets", "nao", "nao_rig.blend")
+NAO_HEIGHT = 1.58          # metres, standing, top of the hair
+NAO_TEX = 1024             # the 4K Tripo textures, scaled down for the game
+
+
 def nao_mats():
     return {
-        "skin": mat("skin", "#f6e6dc", 0.75),
-        "hair": mat("hair", "#141218", 0.55),
-        "eye": mat("eye", "#1d1515", 0.3),
-        "brow": mat("brow", "#2a2224", 0.8),
-        "mouth": mat("mouth", "#c27a76", 0.6),
-        "shirt": mat("tshirt", "#ecebe6", 0.9),
-        "pants": mat("pants", "#858079", 0.95),
-        "sandal": mat("sandal", "#f1efe8", 0.6),
         "bag": mat("tote", "#e2d6bc", 0.95),
         "bag_in": mat("tote_inside", "#bfb39a", 0.95),
-        "watch": mat("watch", "#141414", 0.45),
-        "dial": mat("watch_dial", "#3a3d42", 0.3, 0.3),
         "phone": mat("phone_body", "#1d1f25", 0.35, 0.2),
         "screen": mat("emit_phone", "#0b0d10", 0.25, emit="#dfe9ff", emit_strength=1.0),
         "gold": mat("bell_gold", "#d6aa3a", 0.3, 0.8),
@@ -715,42 +712,204 @@ def nao_mats():
     }
 
 
-NAO_FACE = {
-    "eye": (0.031, 0.118, 0.0165, 0.0125), "eye_style": "oval", "lash": True,
-    "brow": (0.142, 0.016, 0.049, 0.004, 0.0038),
-    "nose": (0.116, 0.088, 0.0065, 0.014),
-    "mouth": (0.060, 0.025, 0.0016, 0.0040),
-    "ear": (0.104, -0.016, 0.071, (0.0085, 0.024, 0.014)),
-}
+def _nao_textures(objs):
+    """Matte the Tripo materials and shrink their textures."""
+    seen = set()
+    for o in objs:
+        for i, m in enumerate(o.data.materials):
+            if m is None or m.name in seen:
+                continue
+            seen.add(m.name)
+            m.name = "nao_head" if o.name == "HeadMesh" else "nao_body"
+            for n in m.node_tree.nodes:
+                if n.type == "BSDF_PRINCIPLED":
+                    n.inputs["Roughness"].default_value = 0.85
+                    n.inputs["Metallic"].default_value = 0.0
+                    for s in ("Specular IOR Level",):
+                        if s in n.inputs:
+                            n.inputs[s].default_value = 0.25
+                    for s in ("Roughness", "Metallic"):
+                        for l in list(n.inputs[s].links):
+                            m.node_tree.links.remove(l)
+                elif n.type == "TEX_IMAGE" and n.image is not None and n.image.size[0] > NAO_TEX:
+                    n.image.scale(NAO_TEX, NAO_TEX)
+                    n.image.file_format = "JPEG"
 
 
-def nao_head(M, chin, zc):
-    sk = skull("skull", chin, zc, HEAD_ADULT, HEAD_ADULT_TOP, M["skin"], k=(1.0, 1.03, 1.0))
-    f = dict(NAO_FACE, chin=chin)
-    parts = [sk] + make_face(sk, M, f)
+class NaoRig:
+    """Loads the rig; pose it with rig_pose.*, then bake() -> (body, head mesh, F) where F maps armature-space
+    points to the final Blender-world points (metres, feet / seat on the floor)."""
 
-    def wave(i, phi):
-        if i < len(rows) - 2:
-            return 0.0, 0.0
-        return 0.003 * math.sin(5 * phi + 1.3), 0.006 * math.sin(7 * phi) - 0.004 * abs(math.sin(phi))
+    def __init__(self, skirt=0.0):
+        self.arm, self.body, self.headm = rig_pose.load_rig(NAO_RIG)
+        _nao_textures([self.body, self.headm])
+        if skirt > 0.0:
+            self.loosen_skirt(skirt)
+        rig_pose.smooth_weights(self.body)
+        update()
+        zs = [(o.matrix_world @ v.co).z for o in (self.body, self.headm) for v in o.data.vertices]
+        self.k = NAO_HEIGHT / (max(zs) - min(zs))
 
-    c = chin
-    rows = [
-        (c + 0.243, 180, 0.050, 0.050, 0.068, zc - 0.012),
-        (c + 0.221, 180, 0.076, 0.076, 0.099, zc - 0.010),
-        (c + 0.197, 180, 0.088, 0.090, 0.112, zc - 0.009),
-        (c + 0.184, 150, 0.091, 0.093, 0.115, zc - 0.008),
-        (c + 0.166, 132, 0.093, 0.095, 0.117, zc - 0.008),
-        (c + 0.146, 120, 0.093, 0.094, 0.118, zc - 0.007),
-        (c + 0.132, 108, 0.092, 0.092, 0.118, zc - 0.007),
-        (c + 0.110, 80, 0.090, 0.090, 0.116, zc - 0.008),
-        (c + 0.075, 80, 0.089, 0.090, 0.114, zc - 0.009),
-        (c + 0.035, 80, 0.091, 0.090, 0.110, zc - 0.010),
-        (c + 0.002, 80, 0.095, 0.090, 0.106, zc - 0.012),
-        (c - 0.020, 80, 0.099, 0.090, 0.103, zc - 0.014),
-    ]
-    hair = [hair_shell("hair_main", rows, M["hair"], (0.0, c + 0.254, zc - 0.014), n=16, wave=wave)]
-    return parts, hair
+    def loosen_skirt(self, frac):
+        """The skirt is weighted to the thighs; when the thighs swing up to sit, let it follow them only
+        partly (the rest goes to the hips) so the frills do not fan out into spikes. Only the cloth
+        outside the tights (farther than ~0.055 from a thigh's core) between the hem and the waist."""
+        def f(co):
+            if not (0.40 < co.z < 0.64):
+                return 0.0
+            r = min(math.hypot(co.x - s * 0.055, co.y + 0.035) for s in (-1, 1))
+            k = min(1.0, max(0.0, (r - 0.050) / 0.025))
+            ramp = min(1.0, (co.z - 0.40) / 0.04)
+            return frac * k * ramp
+        rig_pose.move_weight(self.body, ("LeftUpLeg", "RightUpLeg"), "Hips", f)
+
+    def bake(self):
+        a = self.arm
+        body = rig_pose.bake(self.body, "body")
+        head = rig_pose.bake(self.headm, "nao_head")
+        S = Matrix.Scale(self.k, 4)
+        for o in (body, head):
+            o.matrix_world = S @ o.matrix_world
+            apply_transform(o)
+        zmin = min(v.co.z for o in (body, head) for v in o.data.vertices)
+        off = Vector((0.0, 0.0, -zmin))
+        for o in (body, head):
+            o.data.transform(Matrix.Translation(off))
+        aw = a.matrix_world.copy()
+        F = lambda p: S @ (aw @ Vector(p)) + off   # noqa: E731
+        for o in (self.body, self.headm, a):
+            bpy.data.objects.remove(o)
+        return body, head, F
+
+
+def b2t(v):
+    """Blender world point -> three.js point."""
+    return V(v.x, v.z, -v.y)
+
+
+def nao_finish(body, head_mesh, pivot_b, extra_body=()):
+    """body (+ extras) -> 'body'; the head mesh under the empty 'head' whose origin is the base of the skull."""
+    parts = [body] + list(extra_body)
+    body = finish(parts, "body")
+    head = empty("head", tuple(b2t(pivot_b)))
+    set_parent(head_mesh, head)
+    head_mesh.name = head_mesh.data.name = "face"
+    return body, head
+
+
+def move_xz(roots, dx, dz):
+    for o in roots:
+        o.location = o.location + T(dx, 0.0, dz)
+    update()
+    for o in roots:
+        if o.type == "MESH":
+            apply_transform(o)
+
+
+def build_nao():
+    """Standing. Head a little down toward the phone in her right hand (in front of the chest);
+    the left arm hangs with the tote in the hand."""
+    R = NaoRig()
+    a = R.arm
+    # look down at the phone a little
+    rig_pose.turn(a, "Neck", (1, 0, 0), 6)
+    rig_pose.turn(a, "Head", (1, 0, 0), 8)
+    # left arm: hanging, a little away from the hoodie
+    rig_pose.aim(a, "LeftShoulder", (1, 0.0, -0.12))
+    rig_pose.aim(a, "LeftArm", (0.20, 0.04, -1))
+    rig_pose.aim(a, "LeftForeArm", (0.10, -0.10, -1))
+    rig_pose.aim(a, "LeftHand", (0.06, -0.10, -1))
+    # right arm: elbow by the side, phone in front of the chest
+    rig_pose.aim(a, "RightShoulder", (-1, 0.0, -0.10))
+    wrist = Vector((-0.040, -0.115, 0.690))
+    rig_pose.reach(a, "RightArm", "RightForeArm", wrist, (-0.30, 0.30, 0.45))
+    rig_pose.aim(a, "RightHand", (0.30, -0.70, 0.62))
+    eye = rig_pose.head_of(a, "Head") + Vector((0.0, -0.09, 0.03))
+    rig_pose.face_palm(a, "Right", eye - rig_pose.tail_of(a, "RightHand"))
+    palm = (rig_pose.head_of(a, "RightHand") + rig_pose.head_of(a, "RightHandMiddle2")) / 2
+    pn = rig_pose.palm_normal(a, "Right")
+    along = rig_pose.head_of(a, "RightHandMiddle2") - rig_pose.head_of(a, "RightHand")
+    lw1 = rig_pose.tail_of(a, "LeftHand")
+    neck = rig_pose.head_of(a, "Head")
+    feet = (rig_pose.head_of(a, "LeftFoot") + rig_pose.head_of(a, "RightFoot")) / 2
+    body, headm, F = R.bake()
+    M = nao_mats()
+    # phone: lying on the right palm, long side along the fingers, screen toward her eyes
+    N = b2t(pn).normalized()
+    pc = b2t(F(palm)) + N * 0.010 + b2t(along).normalized() * 0.015
+    ph, _ = phone(M, pc, (b2t(F(eye)) - pc).normalized() * 0.5 + N * 0.5, b2t(along))
+    # tote: handles in the left hand, hanging by her leg
+    grip = b2t(F(lw1))
+    bag_c = grip + V(0.025, -0.300, 0.0)
+    extra = ph + tote(M, bag_c, h=0.34)[0]
+    top_y = bag_c.y + 0.17
+    for zo in (0.06, -0.06):
+        path = [V(bag_c.x, top_y - 0.004, bag_c.z + zo), V(bag_c.x + 0.004, (top_y + grip.y) / 2, bag_c.z + zo * 0.6),
+                grip + V(0.0, -0.004, zo * 0.15)]
+        extra.append(tube("tote_strap", path, [(0.0125, 0.0025)] * len(path), M["bag"], 4, ref=(0, 0, 1), sq=12,
+                          phase=math.pi / 4))
+    extra += keychain(M, V(bag_c.x + 0.030, top_y - 0.006, bag_c.z + 0.10), V(1, 0, 0.3), k=1.0)
+    body, head = nao_finish(body, headm, F(neck), extra)
+    fc = b2t(F(feet))
+    move_xz([body, head], -fc.x, -fc.z)
+    return body, head
+
+
+def build_nao_sit():
+    """Sitting sideways on the floor (yokozuwari: legs folded to her right), filming with the phone held in
+    both hands in front of the chest; the tote on the floor at her left."""
+    R = NaoRig(skirt=0.65)
+    a = R.arm
+    # legs folded to her right (-x): knees forward, feet tucked beside the right hip
+    rig_pose.aim(a, "RightUpLeg", (-0.38, -1.0, -0.10))
+    rig_pose.aim(a, "RightLeg", (-0.55, 0.83, -0.05))
+    rig_pose.aim(a, "RightFoot", (-0.35, 0.90, -0.30))
+    rig_pose.aim(a, "LeftUpLeg", (0.05, -1.0, 0.02))
+    rig_pose.aim(a, "LeftLeg", (-0.85, 0.50, -0.08))
+    rig_pose.aim(a, "LeftFoot", (-0.80, 0.45, -0.30))
+    # lean a little forward and toward the folded legs' side
+    rig_pose.turn(a, "Spine", (1, 0, 0), 6)
+    rig_pose.turn(a, "Spine", (0, 1, 0), -4)
+    rig_pose.turn(a, "Neck", (1, 0, 0), 6)
+    rig_pose.turn(a, "Head", (1, 0, 0), 6)
+    # both hands on the phone in front of the chest
+    for sd, side in ((1, "Left"), (-1, "Right")):
+        rig_pose.aim(a, f"{side}Shoulder", (sd, 0.0, -0.12))
+        sp = rig_pose.head_of(a, "Spine2")
+        wrist = sp + Vector((sd * 0.050, -0.135, -0.075))
+        rig_pose.reach(a, f"{side}Arm", f"{side}ForeArm", wrist, sp + Vector((sd * 0.35, 0.25, -0.35)))
+        rig_pose.aim(a, f"{side}Hand", (-sd * 0.30, -0.70, 0.62))
+    eye = rig_pose.head_of(a, "Head") + Vector((0.0, -0.09, 0.03))
+    palms, pns = [], []
+    for side in ("Left", "Right"):
+        rig_pose.face_palm(a, side, eye - rig_pose.tail_of(a, f"{side}Hand"))
+        palms.append((rig_pose.head_of(a, f"{side}Hand") + rig_pose.head_of(a, f"{side}HandMiddle2")) / 2)
+        pns.append(rig_pose.palm_normal(a, side))
+    neck = rig_pose.head_of(a, "Head")
+    body, headm, F = R.bake()
+    M = nao_mats()
+    # phone held upright between both palms, screen toward her eyes
+    N = b2t(pns[0] + pns[1]).normalized()
+    pc = b2t((F(palms[0]) + F(palms[1])) / 2) + N * 0.012 + V(0.0, 0.03, 0.0)
+    ph, _ = phone(M, pc, (b2t(F(eye)) - pc).normalized() * 0.5 + N * 0.5, V(0.0, 1.0, 0.0))
+    extra = list(ph)
+    # tote on the floor at her left, slumped; keys hanging off a handle
+    bc = V(0.37, 0.160, -0.08)
+    bag_parts, Rb = tote(M, bc, yaw=-28.0, tilt=12.0, h=0.32)
+    extra += bag_parts
+    top = bc + Rb @ V(0.0, 0.160, 0.0)
+    for xo, fl in ((0.016, 1.0), (-0.016, 0.55)):
+        loop = []
+        for d in range(0, 181, 30):
+            r = math.radians(d)
+            hgt = 0.095 * math.sin(r)
+            loop.append(top + Rb @ V(xo + fl * 0.75 * hgt, hgt * 0.66, 0.075 * math.cos(r)))
+        extra.append(tube("tote_strap", loop, [(0.0125, 0.0025)] * len(loop), M["bag"], 4, ref=(0, 1, 0), sq=12,
+                          phase=math.pi / 4))
+    extra += keychain(M, top + Rb @ V(0.026, 0.035, 0.074), Rb @ V(1, 0, 0.2), k=1.0)
+    body, head = nao_finish(body, headm, F(neck), extra)
+    recentre_xz([body, head])
+    return body, head
 
 
 def keychain(M, top, outward, k=1.0):
@@ -805,94 +964,6 @@ def phone(M, center, screen_normal, long_axis, size=(0.071, 0.148, 0.0085)):
     return parts, (C, N, L, W)
 
 
-def build_nao():
-    M = nao_mats()
-    chin = 1.350
-    zc = 0.0
-    pivot = V(0.0, 1.335, -0.016)
-    face, hair = nao_head(M, chin, zc)
-    face.append(tube("neck", [V(0, 1.29, -0.020), V(0, 1.345, -0.016), V(0, 1.40, -0.008)],
-                     [(0.046, 0.043), (0.045, 0.042), (0.044, 0.041)], M["skin"], 8))
-    B = []
-    # ── T-shirt (oversized, dropped shoulders) ──
-    rows = [
-        (0.770, 0.000, 0.190, 0.112, 0.110, 2.6),
-        (0.860, 0.000, 0.188, 0.108, 0.106, 2.6),
-        (0.970, 0.000, 0.180, 0.101, 0.097, 2.6),
-        (1.080, 0.002, 0.179, 0.107, 0.095, 2.6),
-        (1.160, 0.004, 0.180, 0.114, 0.092, 2.6),
-        (1.235, 0.000, 0.186, 0.098, 0.092, 2.8),
-        (1.285, -0.006, 0.177, 0.078, 0.080, 2.6),
-        (1.316, -0.012, 0.122, 0.060, 0.068, 2.4),
-        (1.336, -0.016, 0.060, 0.050, 0.054, 2.0),
-    ]
-    shirt = body_loft("tshirt", rows, M["shirt"], n=16, cap0=None, cap1="flat")
-    B.append(shirt)
-    # ── wide trousers ──
-    B.append(ellip("crotch", V(0.0, 0.766, -0.004), (0.100, 0.050, 0.058), M["pants"], 8, 5))
-    for s in (-1, 1):
-        x0 = s * 0.094
-        B.append(tube("leg", [V(x0, 0.80, 0.0), V(x0, 0.74, 0.001), V(x0 + s * 0.004, 0.45, 0.004),
-                              V(x0 + s * 0.008, 0.090, 0.010)],
-                      [(0.088, 0.086), (0.099, 0.093), (0.103, 0.098), (0.108, 0.103)], M["pants"], 10, ref=(0, 0, 1)))
-    # ── feet in white sandals ──
-    for s in (-1, 1):
-        heel = V(s * 0.092, 0.0, -0.075)
-        toe = V(s * 0.112, 0.0, 0.150 + (0.012 if s < 0 else 0.0))
-        B.append(foot("foot", heel, toe, M["skin"], w=0.040, h=0.030, sole=0.018))
-        d = (toe - heel).normalized()
-        sole_c = (heel + toe) / 2 + d * 0.004
-        sole_c.y = 0.009
-        yaw = math.degrees(math.atan2(d.x, d.z))
-        B.append(rbox("sole", (0.092, 0.018, 0.252), sole_c, M["sandal"], rot3((yaw, "y"))))
-        for t, wdt in ((0.66, 0.030), (0.42, 0.020)):
-            B.append(foot_strap("strap", heel, toe, t, M["sandal"], w=0.040, h=0.030, sole=0.018, width=wdt))
-    # ── arms ──
-    # left: hangs, slightly away from the body (the tote is under it), watch on the wrist
-    lsh, lel, lwr = V(0.160, 1.268, -0.012), V(0.222, 0.995, 0.012), V(0.236, 0.778, 0.070)
-    B.append(tube("sleeve_l", [V(0.140, 1.262, -0.012), V(0.190, 1.168, -0.006), V(0.212, 1.062, 0.004)],
-                  [(0.060, 0.056), (0.064, 0.060), (0.061, 0.057)], M["shirt"], 10, cap0="flat"))
-    B.append(tube("arm_l", [lerp(lsh, lel, 0.15), (lsh + lel) / 2, lel, (lel + lwr) / 2, lwr],
-                  [0.036, 0.034, 0.029, 0.026, 0.021], M["skin"], 8))
-    B += hand("hand_l", lwr, lwr - lel + V(0, -0.05, 0.0), V(-1, 0, 0.15), V(0, 0, 1), M["skin"], k=0.95)
-    wd = (lwr - lel).normalized()
-    wc = lwr - wd * 0.022
-    B.append(tube("watch_band", [wc - wd * 0.008, wc + wd * 0.008], [(0.0245, 0.0215), (0.0245, 0.0215)], M["watch"], 8,
-                  ref=(1, 0, 0)))
-    wr = frame_rot(wd, V(1, 0, 0))
-    B.append(rbox("watch_case", (0.008, 0.026, 0.022), wc + wr @ V(0.024, 0.0, 0.0), M["watch"], wr))
-    B.append(rbox("watch_dial", (0.002, 0.018, 0.016), wc + wr @ V(0.0285, 0.0, 0.0), M["dial"], wr))
-    # right: forearm up, phone in the hand in front of the chest, screen toward her face
-    rsh, rel = V(-0.166, 1.270, -0.012), V(-0.205, 0.995, 0.020)
-    pc = V(-0.045, 1.205, 0.262)
-    eye_pt = V(0.0, chin + 0.122, 0.07)
-    N = ((eye_pt - pc).normalized() + V(0, 0, -0.35)).normalized()
-    ph, (C, N, L, W) = phone(M, pc, N, V(0.10, 0.55, 0.83))
-    B += ph
-    rwr = C - L * 0.092 - N * 0.018
-    B.append(tube("sleeve_r", [V(-0.140, 1.262, -0.012), V(-0.184, 1.168, -0.004), V(-0.200, 1.062, 0.008)],
-                  [(0.060, 0.056), (0.064, 0.060), (0.061, 0.057)], M["shirt"], 10, cap0="flat"))
-    B.append(tube("arm_r", [lerp(rsh, rel, 0.15), (rsh + rel) / 2, rel, (rel + rwr) / 2, rwr],
-                  [0.036, 0.034, 0.029, 0.026, 0.021], M["skin"], 8))
-    thumb_side = -W if W.x > 0 else W
-    B += hand("hand_r", rwr, L, N, thumb_side, M["skin"], k=0.95, curl=0.25)
-    # ── tote bag on the left shoulder, hanging just behind the arm ──
-    bag_c, bh = V(0.214, 0.860, -0.135), 0.360
-    B += tote(M, bag_c, h=bh)[0]
-    top_y = bag_c.y + bh / 2
-    for za, zm in ((bag_c.z + 0.115, 0.076), (bag_c.z - 0.115, -0.108)):
-        a = V(bag_c.x - 0.004, top_y - 0.010, za)
-        sd = 1 if zm > 0 else -1
-        snap = drape([shirt], [(V(0.17, 1.235, zm * 0.92), V(-0.3, 0, -sd)), (V(0.165, 1.30, zm * 0.55), V(-0.2, -1, -0.4 * sd)),
-                               (V(0.140, 1.33, -0.012), V(0, -1, 0))], 0.004)
-        path = [a, V(0.200, 1.120, zm * 1.02)] + snap
-        B.append(tube("tote_strap", path, [(0.0025, 0.0125)] * len(path), M["bag"], 4, ref=(1, 0.3, 0), sq=12,
-                      phase=math.pi / 4))
-    B += keychain(M, V(bag_c.x + 0.018, top_y - 0.004, bag_c.z + 0.125), V(1, 0, 0.3))
-    body, head = assemble(B, face, hair, pivot)
-    return body, head
-
-
 def tote(M, center, yaw=0.0, tilt=0.0, h=0.36, w=0.33, n=12):
     """Natural-cotton tote (no handles), width along local z, thickness along local x, centred at `center`.
     Returns (parts, rotation)."""
@@ -906,95 +977,6 @@ def tote(M, center, yaw=0.0, tilt=0.0, h=0.36, w=0.33, n=12):
     parts.append(rbox("tote_mouth", (0.024, 0.004, w - 0.02), c + R @ V(0.0, h / 2 + 0.001, 0.0), M["bag_in"], R))
     return parts, R
 
-
-def build_nao_sit():
-    """Sitting sideways on the floor (yokozuwari: legs folded to her right), filming with the phone in
-    both hands, the tote on the floor at her left. Barefoot (she is indoors in two of the three scenes)."""
-    M = nao_mats()
-    dy, dz = -0.700, -0.040            # the standing upper body, lowered onto the floor
-    chin = 1.350 + dy
-    zc = dz + 0.006
-    pivot = V(0.0, 1.335 + dy, -0.016 + dz)
-    face, hair = nao_head(M, chin, zc)
-    face.append(tube("neck", [V(0, 1.29 + dy, -0.020 + dz), V(0, 1.345 + dy, -0.016 + dz), V(0, 1.40 + dy, -0.008 + dz)],
-                     [(0.046, 0.043), (0.045, 0.042), (0.044, 0.041)], M["skin"], 8))
-    B = []
-    rows = [
-        (0.050, -0.030, 0.196, 0.140, 0.122, 2.4),
-        (0.130, -0.034, 0.186, 0.118, 0.110, 2.6),
-        (0.270, -0.040, 0.180, 0.101, 0.097, 2.6),
-        (1.080 + dy, 0.002 + dz, 0.179, 0.107, 0.095, 2.6),
-        (1.160 + dy, 0.004 + dz, 0.180, 0.114, 0.092, 2.6),
-        (1.235 + dy, 0.000 + dz, 0.186, 0.098, 0.092, 2.8),
-        (1.285 + dy, -0.006 + dz, 0.177, 0.078, 0.080, 2.6),
-        (1.316 + dy, -0.012 + dz, 0.122, 0.060, 0.068, 2.4),
-        (1.336 + dy, -0.016 + dz, 0.060, 0.050, 0.054, 2.0),
-    ]
-    shirt = body_loft("tshirt", rows, M["shirt"], n=16, cap0="flat", cap1="flat")
-    B.append(shirt)
-    B.append(ellip("seat", V(0.015, 0.075, -0.05), (0.175, 0.075, 0.145), M["pants"], 8, 5))
-    # legs (wide trousers): right leg on the floor, left leg folded on top of it
-    legs = [
-        # hip, knee, ankle, toe
-        (V(-0.070, 0.086, -0.030), V(-0.200, 0.074, 0.290), V(-0.350, 0.077, -0.030), V(-0.395, 0.050, -0.190)),
-        (V(0.095, 0.090, -0.030), V(-0.090, 0.148, 0.312), V(-0.285, 0.178, 0.010), V(-0.330, 0.150, -0.150)),
-    ]
-    for hp, kn, an, toe in legs:
-        mid_t = lerp(hp, kn, 0.5)
-        mid_s = lerp(kn, an, 0.5)
-        # rounded knee: two rings just before / after the knee
-        k0 = kn + (hp - kn).normalized() * 0.05
-        k1 = kn + (an - kn).normalized() * 0.05
-        kout = kn + ((kn - hp).normalized() + (kn - an).normalized()).normalized() * 0.035
-        B.append(tube("thigh", [hp + (hp - kn).normalized() * 0.05, hp, mid_t, k0, kout, k1, mid_s, an],
-                      [(0.080, 0.084), (0.084, 0.088), (0.080, 0.084), (0.072, 0.074), (0.060, 0.062), (0.066, 0.068),
-                       (0.070, 0.072), (0.074, 0.076)], M["pants"], 8, ref=(0, 1, 0), cap0="flat", cap1="flat"))
-        # bare foot lying on its side, sole toward the back/outside
-        B.append(foot("foot", an + (toe - an).normalized() * -0.05 + V(0, -0.02, 0), toe, M["skin"], w=0.036, h=0.030,
-                      sole=toe.y - 0.03))
-    # arms: elbows by the sides, both hands holding the phone in front of the chest (filming forward)
-    pc = V(0.0, 0.528, 0.200)
-    eye_pt = V(0.0, chin + 0.122, zc + 0.07)
-    N = ((eye_pt - pc).normalized() + V(0, -0.25, 0.0)).normalized()
-    ph, (C, N, L, W) = phone(M, pc, N, V(0.0, 1.0, 0.25))
-    B += ph
-    for sd in (-1, 1):
-        sh = V(sd * 0.160, 1.268 + dy, -0.012 + dz)
-        el = V(sd * 0.200, 0.300, 0.020)
-        side = W if (W.x * sd) > 0 else -W
-        wr = C + side * 0.040 - L * 0.085 - N * 0.012
-        B.append(tube("sleeve", [V(sd * 0.140, 1.262 + dy, -0.012 + dz), V(sd * 0.188, 1.168 + dy, -0.010 + dz),
-                                 V(sd * 0.208, 1.062 + dy, 0.0 + dz)],
-                      [(0.060, 0.056), (0.064, 0.060), (0.061, 0.057)], M["shirt"], 10, cap0="flat"))
-        B.append(tube("arm", [lerp(sh, el, 0.15), (sh + el) / 2, el, (el + wr) / 2, wr], [0.036, 0.034, 0.029, 0.026, 0.021],
-                      M["skin"], 8))
-        hd = (L * 1.0 + side * 0.18).normalized()
-        B += hand("hand", wr, hd, -side, -N, M["skin"], k=0.82, curl=0.55)
-        if sd > 0:   # watch on the left wrist
-            wd = (wr - el).normalized()
-            wc = wr - wd * 0.022
-            B.append(tube("watch_band", [wc - wd * 0.008, wc + wd * 0.008], [(0.0245, 0.0215), (0.0245, 0.0215)],
-                          M["watch"], 8, ref=(0, 1, 0)))
-            wrr = frame_rot(wd, V(0, 1, 0))
-            B.append(rbox("watch_case", (0.008, 0.026, 0.022), wc + wrr @ V(0.024, 0.0, 0.0), M["watch"], wrr))
-            B.append(rbox("watch_dial", (0.002, 0.018, 0.016), wc + wrr @ V(0.0285, 0.0, 0.0), M["dial"], wrr))
-    # tote on the floor at her left, slumped against her hip; keys hanging off a handle
-    bc = V(0.232, 0.160, -0.215)
-    bag_parts, R = tote(M, bc, yaw=-28.0, tilt=12.0, h=0.32)
-    B += bag_parts
-    top = bc + R @ V(0.0, 0.160, 0.0)
-    for xo, fl in ((0.016, 1.0), (-0.016, 0.55)):     # two handle loops flopped toward the outside
-        loop = []
-        for a in range(0, 181, 30):
-            r = math.radians(a)
-            hgt = 0.095 * math.sin(r)
-            loop.append(top + R @ V(xo + fl * 0.75 * hgt, hgt * 0.66, 0.075 * math.cos(r)))
-        B.append(tube("tote_strap", loop, [(0.0125, 0.0025)] * len(loop), M["bag"], 4, ref=(0, 1, 0), sq=12,
-                      phase=math.pi / 4))
-    B += keychain(M, top + R @ V(0.026, 0.035, 0.074), R @ V(1, 0, 0.2), k=1.0)
-    body, head = assemble(B, face, hair, pivot)
-    recentre_xz([body, head])
-    return body, head
 
 
 def recentre_xz(roots):

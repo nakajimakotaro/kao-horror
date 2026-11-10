@@ -93,8 +93,8 @@
     "npc_clerk": {"size": [0.5, 1.72, 0.3], "group": "character", "desc": "コンビニ店員(20代前半の男性、青と白の縦縞の制服、名札、黒髪短髪、少し猫背、眠そう)。正面+Z。首から上を head ノード(原点は首の付け根)にする。顔は簡素に(目は小さな暗い楕円、眉)", "nodes": {"head": "頭部(原点=首の付け根)"}, "collider": "auto"},
     "npc_shrine": {"size": [0.5, 1.68, 0.32], "group": "character", "desc": "神社の人(シナリオで宮司か巫女か決定。仮: 年配の宮司。白い白衣と浅葱色の袴、白髪)。正面+Z。head ノード", "nodes": {"head": "頭部"}, "collider": "auto"},
     "npc_neighbor": {"size": [0.5, 1.45, 0.4], "group": "character", "desc": "近所のおばあさん(80代、腰が少し曲がる、白髪のお団子、割烹着かエプロン、サンダル、手に竹ぼうき)。正面+Z。head ノード", "nodes": {"head": "頭部"}, "collider": "auto"},
-    "npc_nao": {"size": [0.48, 1.6, 0.3], "group": "character", "desc": "なお(20代前半の女性、肩くらいの黒髪、夏の夜の服装: 大きめの白いTシャツ、グレーのショートパンツ、サンダル、トートバッグ)。正面+Z。head ノード。シナリオで外見が決まったら合わせる", "nodes": {"head": "頭部"}, "collider": "auto"},
-    "npc_nao_sit": {"size": [0.5, 1.0, 0.7], "group": "character", "desc": "なお の床に座った(横座り/体育座り)ポーズ版。正面+Z。head ノード", "nodes": {"head": "頭部"}, "collider": "auto"},
+    "npc_nao": {"size": [0.56, 1.59, 0.47], "group": "character", "desc": "なお(20代前半の女性)。tools/blender/assets/nao/nao_rig.blend の骨入りテクスチャモデル(長い黒髪・前髪、チョーカー、肩を落とした青灰色のパーカー、黒のキャミソールとスカート、黒タイツ、ブーツ)を立ち姿にポーズして焼き込んだもの。右手にスマホ(emit_phone)、左手に生成りのトートバッグ(鈴と「103」の札の鍵)。正面+Z。head ノード", "nodes": {"head": "頭部"}, "collider": "auto"},
+    "npc_nao_sit": {"size": [1.02, 0.93, 0.78], "group": "character", "desc": "なお の床に座った(横座り、脚は右へ)ポーズ版。両手でスマホ(emit_phone)を胸の前に持つ。トートバッグは左の床。正面+Z。head ノード", "nodes": {"head": "頭部"}, "collider": "auto"},
     "npc_extra": {"size": [0.5, 1.75, 0.3], "group": "character", "desc": "予備の人物(シナリオで決定。仮: 警察官の制服)。正面+Z。head ノード", "nodes": {"head": "頭部"}, "collider": "auto"},
     "face_head": {"size": [0.26, 0.34, 0.18], "group": "face", "desc": "「顔」。体のない人間の顔の仮面状メッシュ(後ろは開いている/平ら)。正面+Z。原点は顔の中心(鼻の付け根付近)。目のくぼみ、鼻、唇の凹凸。正面投影のUV(0〜1)で three 側のテクスチャを貼る", "collider": "none"}
   }

@@ -1,6 +1,6 @@
 # 技術設計（実装担当向け）
 
-WebGL 一人称ホラー。**Vite + TypeScript + three.js (r187, WebGLRenderer)**。3D モデルは **Blender 5.2 の Python スクリプト**でプロシージャル生成し GLB で読み込む。音はすべて WebAudio で**数式から合成**（外部音源ファイルなし）。
+WebGL 一人称ホラー。**Vite + TypeScript + three.js (r187, WebGLRenderer)**。3D モデルは **Blender 5.2 の Python スクリプト**でプロシージャル生成し GLB で読み込む（なお `npc_nao`/`npc_nao_sit` だけは、骨入りのテクスチャつきモデル `tools/blender/assets/nao/nao_rig.blend` を `tools/blender/rig_pose.py` でポーズさせて焼き込む）。音はすべて WebAudio で**数式から合成**（外部音源ファイルなし）。
 
 ```
 npm run dev        # http://127.0.0.1:5173  (dev では window.__kao デバッグAPIあり)
