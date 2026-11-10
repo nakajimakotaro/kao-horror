@@ -5,3 +5,4 @@ dist
 dist-artifact
 __pycache__/
 *.pyc
+nezunoban-web.zip
