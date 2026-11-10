@@ -251,6 +251,9 @@ export class UI {
     m.root.querySelectorAll('.mi').forEach((e, k) => e.classList.toggle('sel', k === i));
   }
 
+  /** small version line in the corner of the title / pause screens */
+  private static readonly VERSION = `v${import.meta.env.VITE_APP_VERSION ?? 'dev'}`;
+
   showScreen(html: string, cls: string): HTMLElement {
     this.screenEl.className = `screen ${cls}`;
     this.screenEl.innerHTML = html;
@@ -264,7 +267,7 @@ export class UI {
   }
 
   showTitle(o: { title: string; sub: string; warn: string; hasSave: boolean; endings: string[]; onStart: () => void; onContinue: () => void; onSettings: () => void; onControls: () => void }): void {
-    const s = this.showScreen(`<div class="title-wrap"><div class="title-main">${esc(o.title)}</div><div class="title-sub">${esc(o.sub)}</div><div class="menu"></div><div class="title-endings">${o.endings.map(esc).join('　')}</div><div class="title-warn">${esc(o.warn)}</div></div>`, 'title');
+    const s = this.showScreen(`<div class="title-wrap"><div class="title-main">${esc(o.title)}</div><div class="title-sub">${esc(o.sub)}</div><div class="menu"></div><div class="title-endings">${o.endings.map(esc).join('　')}</div><div class="title-warn">${esc(o.warn)}</div></div><div class="ver">${esc(UI.VERSION)}</div>`, 'title');
     this.menu(s, [
       { label: 'はじめから', act: o.onStart },
       { label: 'つづきから', act: o.onContinue, disabled: !o.hasSave },
@@ -309,7 +312,7 @@ export class UI {
   }
 
   showPause(o: { onResume: () => void; onSettings: () => void; onControls: () => void; onTitle: () => void; objective: string | null }): void {
-    const s = this.showScreen(`<div class="panel"><div class="panel-title">一時停止</div>${o.objective ? `<div class="panel-note">目標：${esc(o.objective)}</div>` : ''}<div class="menu"></div></div>`, 'dim');
+    const s = this.showScreen(`<div class="panel"><div class="panel-title">一時停止</div>${o.objective ? `<div class="panel-note">目標：${esc(o.objective)}</div>` : ''}<div class="menu"></div></div><div class="ver">${esc(UI.VERSION)}</div>`, 'dim');
     this.menu(s, [
       { label: 'つづける', act: o.onResume },
       { label: '操作方法', act: o.onControls },

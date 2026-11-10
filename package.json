@@ -11,7 +11,8 @@
     "typecheck": "tsc -p .",
     "assets": "node tools/build-assets.mjs",
     "validate": "node tools/validate.mjs",
-    "build:artifact": "tsc -p . && node tools/build-artifact.mjs"
+    "build:artifact": "tsc -p . && node tools/build-artifact.mjs",
+    "upload": "node tools/upload-itch.mjs"
   },
   "dependencies": {
     "three": "^0.187.0"

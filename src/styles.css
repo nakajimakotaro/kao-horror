@@ -118,6 +118,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; c
 .title-sub { font-family: var(--pixel); margin: 10px 0 46px; letter-spacing: .5em; color: #b3261e; font-size: 16px; }
 @keyframes titlein { from { opacity: 0; filter: blur(8px); } }
 .title-warn { margin-top: 40px; font-size: 12px; color: #77726a; letter-spacing: .08em; max-width: 520px; line-height: 1.7; }
+.screen .ver { position: absolute; right: 14px; bottom: 10px; font-size: 11px; color: #5d5952; letter-spacing: .06em; pointer-events: none; }
 .title-endings { margin-top: 18px; font-size: 12px; color: #a08060; letter-spacing: .15em; }
 .menu { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .mi { min-width: 240px; padding: 9px 20px; font-size: 18px; letter-spacing: .3em; color: #bdb6a8; text-align: center; cursor: pointer; }

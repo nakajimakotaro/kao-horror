@@ -42,6 +42,7 @@ npm run typecheck   # 型チェック
 npm run validate    # 章スクリプトが存在しないID（小道具・アンカー・文書・効果音…）を参照していないか検査
 npm run build       # dist/ に本番ビルド（静的ファイル一式。どこのWebサーバーにも置ける）
 npm run assets      # Blender で全3Dモデルを再生成（Blender 5.x。場所は BLENDER=... で指定可）
+npm run upload      # ビルドして itch.io（nakajimakotaro/nezunoban の html5）へ butler で push。初回だけ butler login
 ```
 
 開発サーバー（または URL に `?debug`）ではコンソールに `window.__kao` が生えます。
