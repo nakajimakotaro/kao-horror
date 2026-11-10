@@ -113,6 +113,8 @@ export class FaceSystem {
   private readonly tmp = new THREE.Vector3();
   private readonly fwd = new THREE.Vector3();
   private locked: Face | null = null;
+  /** seconds during which staring does not build up (e.g. right after a text box closes) */
+  private graceT = 0;
 
   constructor(scene: THREE.Scene, private readonly occluders: (a: THREE.Vector3, b: THREE.Vector3) => THREE.Mesh[]) {
     scene.add(this.group);
@@ -149,6 +151,7 @@ export class FaceSystem {
     this.maxGaze = 0;
     this.presence = 0;
     this.locked = null;
+    this.graceT = 0;
   }
 
   /** Line of sight from the camera to a point, ignoring the owner prop's body. */
@@ -183,6 +186,7 @@ export class FaceSystem {
     const viewLimit = Math.min(1.25, halfFov * 0.62 + 0.25);
     let maxG = 0;
     let presence = 0;
+    if (ctx.active && this.enabled) this.graceT = Math.max(0, this.graceT - dt);
     for (const f of [...this.faces]) {
       f.age += dt;
       if (f.dying > 0) {
@@ -214,7 +218,7 @@ export class FaceSystem {
         const wasSeen = f.seen;
         if (f.tickVisibility(dt, f.inView)) { f.dying = 0.0001; continue; }
         if (!wasSeen && f.seen) this.onSeen?.(f);
-        const grace = f.age < 0.35;
+        const grace = f.age < 0.35 || this.graceT > 0;
         if (f.centered && !grace) f.gaze += dt;
         else f.gaze = Math.max(0, f.gaze - dt * 1.25);
         if (f.gaze >= f.lethal && !f.opts.harmless && !this.god && !this.locked) {
@@ -258,6 +262,10 @@ export class FaceSystem {
       };
       step();
     });
+  }
+
+  grantGrace(seconds: number): void {
+    this.graceT = Math.max(this.graceT, seconds);
   }
 
   releaseLock(): void {

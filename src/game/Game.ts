@@ -88,6 +88,7 @@ export class Game {
   private last = performance.now();
   private time = 0;
   private dialogueDepth = 0;
+  private wasModal = false;
 
   static freshRuntime(): Runtime {
     return { zones: new Map(), timers: [], watchers: [], loops: [], blackout: null, shopBought: {}, gameOverReason: null, autoDoorChime: true };
@@ -324,10 +325,14 @@ export class Game {
       });
   }
 
-  /** Modal UI calls are serialized so two scripts never fight over the dialogue box. */
+  /**
+   * Modal UI calls are serialized so two scripts never fight over the dialogue box.
+   * A text box never opens over a face in view: it waits until the player looks away or closes the eyes.
+   */
   dialogue<T>(fn: () => Promise<T>): Promise<T> {
     const run = async () => {
       const gen = this.gen;
+      while (gen === this.gen && this.faceInView()) await new Promise((r) => requestAnimationFrame(r));
       this.dialogueDepth++;
       try {
         return await fn();
@@ -340,6 +345,13 @@ export class Game {
     return p;
   }
   private dialogueChain: Promise<void> = Promise.resolve();
+
+  /** A face the player could die from is on screen with the eyes open (cutscenes aim the camera, so they do not count). */
+  private faceInView(): boolean {
+    if (this.mode !== 'play' && this.mode !== 'paused') return false;
+    if (this.lockCount > 0 && !this.inPeephole) return false;
+    return this.faces.enabled && this.faces.faces.some((f) => f.inView && f.dying === 0 && !f.opts.harmless);
+  }
 
   setObjective(text: string | null): void {
     this.objective = text;
@@ -861,9 +873,17 @@ export class Game {
       }
     }
 
+    // a face may be right in front when a text box opens: on closing it, give a moment to look away
+    if (this.wasModal && !modal && playing) this.faces.grantGrace(1);
+    this.wasModal = modal;
+
     // eyes
-    // the eyes can also be closed while looking through the door scope
-    const wantClosed = this.eyes.force ?? ((controls || (playing && !modal && this.inPeephole)) && this.input.isDown('eyes'));
+    // the eyes can also be closed while looking through the door scope, and while a text box is up
+    const free = this.lockCount === 0 || this.inPeephole;
+    const canClose = controls || (playing && free && (this.ui.talking || (!modal && this.inPeephole)));
+    // a text box that came up with the eyes shut keeps them shut until it is gone (no face over the text)
+    const keepShut = playing && free && this.dialogueDepth > 0 && this.eyes.closed;
+    const wantClosed = this.eyes.force ?? (keepShut || (canClose && this.input.isDown('eyes')));
     this.eyes.amount += ((wantClosed ? 1 : 0) - this.eyes.amount) * Math.min(1, dt * (wantClosed ? 14 : 9));
     this.eyes.closed = this.eyes.amount > 0.7;
     if (this.eyes.closed && controls) {

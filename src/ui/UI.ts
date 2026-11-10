@@ -38,6 +38,8 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 export class UI {
   readonly root: HTMLElement;
   private modal: Modal | null = null;
+  /** the dialogue / shop that a pause menu opened over; it comes back when the menu closes */
+  private underMenu: Modal | null = null;
   private readonly box = el('div', 'dlg hidden');
   private readonly boxName = el('div', 'dlg-name');
   private readonly boxText = el('div', 'dlg-text');
@@ -82,6 +84,11 @@ export class UI {
 
   get busyDialogue(): boolean {
     return this.modal?.kind === 'say' || this.modal?.kind === 'choice';
+  }
+
+  /** A text box (say / mono / narrate) is showing. Space does not advance it, so the eyes can be closed. */
+  get talking(): boolean {
+    return this.modal?.kind === 'say';
   }
 
   // ── dialogue ────────────────────────────────────────────────────────────
@@ -234,6 +241,7 @@ export class UI {
       root.append(wrap);
     }
     wrap.innerHTML = '';
+    if (this.modal && this.modal.kind !== 'menu') this.underMenu = this.modal;
     items.forEach((it, i) => {
       const b = el('div', `mi${it.disabled ? ' dis' : ''}`, esc(it.label));
       b.addEventListener('click', () => { if (!it.disabled) { this.onConfirmSound?.(); it.act(); } });
@@ -263,7 +271,10 @@ export class UI {
   hideScreen(): void {
     this.screenEl.className = 'screen hidden';
     this.screenEl.innerHTML = '';
-    if (this.modal?.kind === 'menu') this.modal = null;
+    if (this.modal?.kind === 'menu') {
+      this.modal = this.underMenu;
+      this.underMenu = null;
+    }
   }
 
   showTitle(o: { title: string; sub: string; warn: string; hasSave: boolean; endings: string[]; onStart: () => void; onContinue: () => void; onSettings: () => void; onControls: () => void }): void {
@@ -463,7 +474,8 @@ export class UI {
           if (m.shown >= line.length) m.full = true;
           this.renderLine();
         }
-        if (input.pressed('confirm')) { input.consume('confirm'); this.advance(); }
+        // not Space: holding it closes the eyes while the box is up
+        if (input.pressed('interact')) { input.consume('interact'); this.advance(); }
         break;
       }
       case 'choice': {
@@ -500,10 +512,12 @@ export class UI {
 
   /** Drop any modal (used when a chapter restarts). Pending promises resolve so awaiting scripts can abort. */
   reset(): void {
-    const m = this.modal;
+    for (const m of [this.modal, this.underMenu]) {
+      if (m?.kind === 'say' || m?.kind === 'doc' || m?.kind === 'list') m.resolve();
+      else if (m?.kind === 'choice') m.resolve(0);
+    }
     this.modal = null;
-    if (m?.kind === 'say' || m?.kind === 'doc' || m?.kind === 'list') m.resolve();
-    else if (m?.kind === 'choice') m.resolve(0);
+    this.underMenu = null;
     this.box.classList.add('hidden');
     this.choiceEl.classList.add('hidden');
     this.docEl.className = 'doc hidden';

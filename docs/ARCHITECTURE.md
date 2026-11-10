@@ -66,7 +66,7 @@ export const ch1_night: ChapterDef = {
 - 演出: `await c.cutscene(async () => {...})`（その間プレイヤー操作ロック）/ `await c.lookAt('anc_door_outside' | Vector3, 秒)` / `await c.wakeUp()` / `await c.lieDown()`（ベッドに横になって暗転）/ `c.shake(1)` / `c.flash('#fff', 0.5)` / `c.fear(0..1, 秒)` / `await c.peephole({ onEnter })`（ドアスコープ。プレイヤーが下がるまで待つ）/ `c.eyes(true)` で強制的に目を閉じる、`c.releaseEyes()` / `await c.blackoutTo('spawn_kitchen', { minutes: 20 })`（意識が落ちて別の場所で目覚める＝夢遊。時計も進む）/ `c.now` で現在の時計 {h, m} / `c.hint('[Space] 長押しで目を閉じる')`（左下の操作ヒント）
 - 顔: `const f = c.face('anc_fridge_inside', { type: 'static'|'fleeting'|'approach'|'peek', lethal?: 2, scale?, harmless?, vanishAfter?, speed?, minDist?, style?: 'head'|'flat', onSeen?, onVanish? })` / `c.clearFace(f | 'anc_id')` / `c.clearFaces()` / `c.gaze`（0..1）/ `c.facesEnabled(bool)`
   - アンカーが小道具に属する場合（冷蔵庫の中など）、その小道具の本体は視線を遮らず、扉・ふたは遮る
-  - 凝視判定: 画面中心約10°以内・遮蔽なし・目を開けている状態が `lethal` 秒（既定2秒）続くとゲームオーバー（お守り所持時は1回だけ肩代わり）。会話・選択肢の表示中は進まない。出現直後0.35秒は猶予
+  - 凝視判定: 画面中心約10°以内・遮蔽なし・目を開けている状態が `lethal` 秒（既定2秒）続くとゲームオーバー（お守り所持時は1回だけ肩代わり）。会話・選択肢の表示中は進まない。出現直後0.35秒と、モーダル（台詞・文書・店など）が閉じた直後1秒は猶予。台詞の表示中も Space 長押しで目を閉じられる（台詞送りは E／Enter／クリックのみ）。**顔が視界にある間は台詞・選択肢・文書を出さない**（`c.say` などは目をそらすか閉じるまで待ってから出る。カットシーン中と `harmless` の顔は除く）。目を閉じたまま出た台詞は、台詞が閉じるまで目も閉じたまま
 - NPC: `c.npc('npc_clerk', { at: 'npc_clerk_spot', label: '店員に話しかける', talk: async () => {...} })` / `c.hideNpc(id)`
 - 音: `c.sfx('doorbell', { at: 'apt_door' | 'anc_x' | Vector3, volume?, rate?, delay? })` / `c.loop(id, { at? })` → handle（章終了で自動停止）/ `c.ambience('night_out' | null)`
 - プレイヤー: `c.player.pos / .yaw / .eyesClosed / .flashlightOn` / `c.inZone(id)` / `c.teleport('spawn_x' | 'anc_x' | {pos, yaw})` / `c.flashlight({ owned?, on?, enabled? })` / `c.lockControls(bool)`
