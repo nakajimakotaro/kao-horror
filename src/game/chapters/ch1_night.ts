@@ -167,10 +167,9 @@ export const ch1_night: ChapterDef = {
         onSeen: () => {
           firstFace();
           c.sfx('face_appear', { at: 'anc_washer_inside' });
-          c.run(async () => {
-            await monoEyes('……見るな。なぜか、そう思った');
-            c.hint('顔から目をそらす');
-          });
+          // ヒントが先: 独白は目をそらすまで出ない
+          c.hint('顔から目をそらす');
+          c.run(() => monoEyes('……見るな。なぜか、そう思った'));
         },
         onVanish: () => {
           if (c.alive) c.set('ch1_f11_gone');
@@ -225,11 +224,8 @@ export const ch1_night: ChapterDef = {
         lookAt: false,
         yaw: 180,
         onSeen: () => {
-          const first = firstFace();
-          c.run(async () => {
-            await monoEyes(['鏡の中――俺の肩の、うしろに', '……振り返っても、誰もいない']);
-            if (first) c.hint('顔から目をそらす');
-          });
+          if (firstFace()) c.hint('顔から目をそらす');
+          c.run(() => monoEyes(['鏡の中――俺の肩の、うしろに', '……振り返っても、誰もいない']));
         },
       });
     };
@@ -256,11 +252,8 @@ export const ch1_night: ChapterDef = {
         type: 'peek',
         owner: null,
         onSeen: () => {
-          const first = firstFace();
-          c.run(async () => {
-            await monoEyes('クローゼットの隙間から、半分だけ――');
-            if (first) c.hint('顔から目をそらす');
-          });
+          if (firstFace()) c.hint('顔から目をそらす');
+          c.run(() => monoEyes('クローゼットの隙間から、半分だけ――'));
         },
       });
       // 右戸（CLOSET_GAP）が開けた隙間 x∈[0.72,0.85] の中央、戸のすぐ裏。正面から左右およそ25°以内で見える
@@ -306,12 +299,9 @@ export const ch1_night: ChapterDef = {
             scale: 1.5,
             onSeen: () => {
               c.set('ch1_f16_seen');
-              const first = firstFace();
               c.sfx('face_appear', { at: 'anc_curve_mirror' });
-              c.run(async () => {
-                await monoEyes(['カーブミラーの中――白い顔が、こっちを', '……見るな']);
-                if (first) c.hint('顔から目をそらす');
-              });
+              if (firstFace()) c.hint('顔から目をそらす');
+              c.run(() => monoEyes(['カーブミラーの中――白い顔が、こっちを', '……見るな']));
             },
           });
           while (f.alive) {
