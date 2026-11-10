@@ -3,3 +3,5 @@ dist
 .DS_Store
 *.blend1
 dist-artifact
+__pycache__/
+*.pyc
