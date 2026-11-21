@@ -8,6 +8,7 @@ import type { ChapterDef } from './Chapter';
 import type { Face, FaceOptions } from './face/FaceSystem';
 import type { Game } from './Game';
 import type { InteractDef } from './Interaction';
+import { T, lines as scriptLines } from '../script';
 import type { FlagValue } from './State';
 import { DOCS } from './content/docs';
 import { ITEMS } from './content/items';
@@ -18,7 +19,8 @@ export class Aborted extends Error {
 }
 
 export const NPC_NAMES: Record<string, string> = {
-  npc_clerk: '店員', npc_shrine: '宮司', npc_neighbor: 'おばあさん', npc_nao: 'なお', npc_nao_sit: 'なお', npc_extra: '？？？',
+  npc_clerk: T('system.npc.npc_clerk'), npc_shrine: T('system.npc.npc_shrine'), npc_neighbor: T('system.npc.npc_neighbor'),
+  npc_nao: T('system.npc.npc_nao'), npc_nao_sit: T('system.npc.npc_nao_sit'), npc_extra: T('system.npc.npc_extra'),
 };
 
 export interface ZoneHandlers {
@@ -72,7 +74,7 @@ export class Ctx {
     this.game.state.give(item, n);
     if (item === 'flashlight') this.game.flashlight.owned = true;
     if (!silent) {
-      this.game.ui.toast(`${ITEMS[item]?.name ?? item} を手に入れた`);
+      this.game.ui.toast(T('system.toast_item_get', { item: ITEMS[item]?.name ?? item }));
       this.game.audio.play('item_get');
     }
   }
@@ -114,6 +116,27 @@ export class Ctx {
     this.check();
     await this.game.dialogue(() => { this.check(); return this.game.ui.say(null, text, 'narr'); });
     this.check();
+  }
+  /**
+   * 台本（script/*.nani）のブロックを台詞として流す。続けて同じ話者の行は1つの会話ウィンドウにまとめる。
+   * `なお: …` = c.say / `ナレ: …` = c.narrate / それ以外 = c.mono
+   */
+  async play(key: string, vars?: Record<string, string | number>): Promise<void> {
+    const ls = scriptLines(key, vars);
+    for (let i = 0; i < ls.length; ) {
+      const { kind, speaker } = ls[i];
+      const pages: string[] = [];
+      while (i < ls.length && ls[i].kind === kind && ls[i].speaker === speaker) pages.push(ls[i++].text);
+      const text = pages.length === 1 ? pages[0] : pages;
+      if (kind === 'talk') await this.say(speaker ?? '', text);
+      else if (kind === 'narr') await this.narrate(text);
+      else await this.mono(text);
+    }
+  }
+  /** 台本の1行を字幕で出す（c.sub の台本版。ブロックの最初の行を使う） */
+  subLine(key: string, sec = 3, vars?: Record<string, string | number>): void {
+    const l = scriptLines(key, vars)[0];
+    this.sub(l.kind === 'talk' ? l.speaker : null, l.text, sec);
   }
   async choice(options: string[], prompt?: string): Promise<number> {
     this.check();
@@ -311,7 +334,7 @@ export class Ctx {
     n.phoneGlow = !!o.phoneGlow;
     if (o.talk) {
       const talk = o.talk;
-      this.on(id, { label: o.label ?? `${NPC_NAMES[id] ?? id}に話しかける`, use: () => talk(), range: 2.8, blind: false });
+      this.on(id, { label: o.label ?? T('system.npc_talk_label', { name: NPC_NAMES[id] ?? id }), use: () => talk(), range: 2.8, blind: false });
     } else {
       this.off(id);
     }

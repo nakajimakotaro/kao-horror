@@ -2,6 +2,7 @@ import type { SoundHandle } from '../../audio/AudioEngine';
 import type { Npc } from '../../world/World';
 import type { ChapterDef } from '../Chapter';
 import type { Ctx } from '../Ctx';
+import { T, TL } from '../../script';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  第2章　ch2_day「一日目　昼」（docs/SCENARIO.md §5 第2章）
@@ -32,13 +33,13 @@ type TownFlag = (typeof TOWN)[number];
 
 const townCount = (c: Ctx): number => TOWN.filter((f) => c.is(f)).length;
 // QA3: name what actually counts (reading the board / talking to 坂口 / talking to 白瀬), not just the places
-const townObjective = (c: Ctx): string => `外に出て、町を歩く（掲示板・コンビニの店員・神社の宮司　${townCount(c)}/3）`;
+const townObjective = (c: Ctx): string => T('ch2.obj_town', { n: townCount(c) });
 /** the towel hung over the mirror in ch1 is still there (until taken off here) */
 const towelOn = (c: Ctx): boolean => c.is('gap_mirror') && !c.is('ch2_towel_off');
 
 function currentObjective(c: Ctx): string {
-  if (!c.is('read_doc_line_nao')) return 'スマホを見る';
-  if (c.is('ch2_dusk')) return '部屋に戻って休む';
+  if (!c.is('read_doc_line_nao')) return T('ch2.obj_phone');
+  if (c.is('ch2_dusk')) return T('ch2.obj_rest');
   return townObjective(c);
 }
 
@@ -126,8 +127,8 @@ async function checkDusk(e: Env): Promise<void> {
   e.amb.dusk(); // [AMB:higurashi]
   const now = c.now;
   if (now.h * 60 + now.m < DUSK_CLOCK.h * 60 + DUSK_CLOCK.m) c.clock(DUSK_CLOCK.h, DUSK_CLOCK.m, 0.1);
-  await c.mono('……日が傾いてきた。ヒグラシが鳴いてる');
-  c.objective('部屋に戻って休む');
+  await c.play('ch2.dusk');
+  c.objective(T('ch2.obj_rest'));
 }
 
 /**
@@ -135,67 +136,53 @@ async function checkDusk(e: Env): Promise<void> {
  * For triggers that can fire while the player walks with the eyes shut (zones):
  * keep the eyes shut for the box, then hand them back.
  */
-async function monoEyesSafe(c: Ctx, text: string | string[]): Promise<void> {
+async function monoEyesSafe(c: Ctx, show: () => Promise<void>): Promise<void> {
   if (!c.player.eyesClosed) {
-    await c.mono(text);
+    await show();
     return;
   }
   c.eyes(true);
   try {
-    await c.mono(text);
+    await show();
   } finally {
     c.releaseEyes();
   }
 }
 
 // ── NPC talks ───────────────────────────────────────────────────────────────
-const HATSU_Q = ['夜中に、目が覚めるんです', '前に住んでた人って、どんな人でした？', '懐中電灯が、冷蔵庫に入ってたんです'];
+const hatsuQ = (): string[] => TL('ch2.choice_hatsu');
 
 // QA19: ハツ and 白瀬 share one local speech (〜けん・〜とる・〜やろ・ほやけど). No Kansai せやけど /
 // bare 〜や / 行き・つぶっとき, no Hiroshima ほいじゃけん.
 async function hatsuAnswer(c: Ctx, q: number): Promise<void> {
   c.set(`hatsu2_q${q + 1}`);
   if (q === 0) {
-    await c.say('ハツ', [
-      '三時ごろやろ。年寄りは、みんなそうよ',
-      'ほやけど、目はつぶっとかないかんよ。夜中に目ぇ開けとったら、おもてさまと目が合うけん',
-    ]);
+    await c.play('ch2.hatsu_ans_night');
   } else if (q === 1) {
-    await c.say('ハツ', [
-      '女の子よ。しずくちゃん。ええ子やった',
-      '夜によう歩いとったんよ。裸足で。……去年の夏の終わりに、おらんようになってしもうて',
-      '掲示板に、張り紙あるやろ',
-    ]);
+    await c.play('ch2.hatsu_ans_prev');
   } else {
-    await c.say('ハツ', 'ああ、電池はな、冷蔵庫に入れとくと長持ちするんよ。あんたが越してきたとき、教えたやろ');
-    await c.mono('……そうだっけ');
+    await c.play('ch2.hatsu_ans_fridge');
   }
 }
 
 async function talkHatsu(c: Ctx): Promise<void> {
   if (!c.is('talked_hatsu_2')) {
     c.set('talked_hatsu_2');
-    await c.say('ハツ', ['あら、103の。暑いねえ。打ち水しよるんよ', 'あんた、顔色わるいよ。ちゃんと寝よるん？']);
-    await hatsuAnswer(c, await c.choice(HATSU_Q));
-    await c.say('ハツ', [
-      'おもてさまの唄、知らん？　このへんの子は、みんな歌うて育ったんよ',
-      'ひとつ、ひとりで、めがさめて。ふたつ、ふたつで、めがあう',
-      'みっつ、みられりゃ、おもてになる。よっつ、よなかの、すきまから。いつつ、いつでも、のぞいてる',
-      '……あら、続き。なんやったかねえ。年とると、すぐ出てこんようになる',
-      '夜におもてに出たらいかんよ。おもてさまが見とるけん',
-    ]);
+    await c.play('ch2.hatsu_greet');
+    await hatsuAnswer(c, await c.choice(hatsuQ()));
+    await c.play('ch2.hatsu_song');
     await c.doc('doc_song_half');
-    await c.mono('ハツさんの唄を、スマホのメモに打ち込んだ');
+    await c.play('ch2.hatsu_song_memo');
     return;
   }
   // 2回目以降: 残りの選択肢と「いえ、なんでも」
-  const rest = HATSU_Q.map((text, q) => ({ text, q })).filter((o) => !c.is(`hatsu2_q${o.q + 1}`));
+  const rest = hatsuQ().map((text, q) => ({ text, q })).filter((o) => !c.is(`hatsu2_q${o.q + 1}`));
   if (rest.length) {
-    const i = await c.choice([...rest.map((o) => o.text), 'いえ、なんでも']);
+    const i = await c.choice([...rest.map((o) => o.text), T('ch2.choice_hatsu_none')]);
     if (i < rest.length) await hatsuAnswer(c, rest[i].q);
-    else await c.say('ハツ', 'そうかね。……ほんなら'); // QA24: 「いえ、なんでも」にも一言（唄はくり返さない）
+    else await c.play('ch2.hatsu_none'); // QA24: 「いえ、なんでも」にも一言（唄はくり返さない）
   }
-  await c.say('ハツ', '蚊取り線香、いる？　夜は蚊が多いけん');
+  await c.play('ch2.hatsu_katori');
 }
 
 /** さき's first talk: right after the board (turn toward her) or when spoken to first. */
@@ -207,11 +194,7 @@ async function sakiFirst(c: Ctx, turnTo: Npc | null): Promise<void> {
     else head.y = 0.95;
     await c.cutscene(() => c.lookAt(head, 0.7)); // she speaks up: turn toward her (no walking off mid-turn)
   }
-  await c.say('さき', '……おにいちゃん、103のひと？');
-  await c.say('透', 'そうだけど');
-  await c.say('さき', 'よるね、さき、トイレにおきたら、おにいちゃん、あるいてたよ。はだしで');
-  await c.say('透', '……え？');
-  await c.say('さき', ['おにいちゃんのうしろにね、しろいかお、いたよ', 'ないしょね。ママに、うそつくなっていわれるから']);
+  await c.play('ch2.saki_first');
 }
 
 async function talkSaki(c: Ctx): Promise<void> {
@@ -219,32 +202,25 @@ async function talkSaki(c: Ctx): Promise<void> {
     await sakiFirst(c, null);
     return;
   }
-  await c.say('さき', 'なつやすみ、あとみっかで、おわっちゃう');
+  await c.play('ch2.saki_again');
 }
 
 async function talkClerk(e: Env): Promise<void> {
   const { c } = e;
   if (c.is('talked_clerk_2')) {
     // (he served Toru at three this morning if Toru went in during ch1 — then 「深夜もいる」 is no news)
-    if (c.is('visited_conbini_ch1')) await c.say('坂口', '今朝の三時も、俺だったでしょ。人いないんで。……夜中に線香買ってく人、たまにいるんすよね');
-    else await c.say('坂口', '深夜もいるんすよ、俺。人いないんで。……夜中に線香買ってく人、たまにいるんすよね');
+    if (c.is('visited_conbini_ch1')) await c.play('ch2.clerk_again_ch1');
+    else await c.play('ch2.clerk_again');
     return;
   }
   if (c.is('visited_conbini_ch1')) {
     // QA24: Toru did come in at three this morning (ch1) — 坂口 knows, and asks about the night before
-    await c.say('坂口', ['いらっしゃいませー。……あ', 'お客さん、今朝の三時ごろも来てましたけど……おとといも、来てましたよね']);
-    await c.say('透', '……おととい？　来てないけど');
+    await c.play('ch2.clerk_first_ch1');
   } else {
-    await c.say('坂口', ['いらっしゃいませー。……あ', 'お客さん、おとといも三時ごろ来てましたよね']);
-    await c.say('透', '……来てないけど');
+    await c.play('ch2.clerk_first');
   }
-  await c.say('坂口', [
-    'え、来てたっすよ。ドリンクの冷蔵庫の前で、ずーっと立ってて。で、ミルクティー一本',
-    'なんか小声でしゃべってたんで、電話かと思ったんすけど',
-    '『お姉ちゃんの好きなやつ』って。……女の子みたいな声で',
-  ]);
-  await c.say('透', '……覚えてない'); // QA18: said aloud — 坂口 answers it
-  await c.say('坂口', ['……え、寝てたんすか？　歩きながら？　こわ', '電池なら、そこの棚っす']);
+  // QA18: said aloud — 坂口 answers it (透「……覚えてない」 in ch2.clerk_milktea)
+  await c.play('ch2.clerk_milktea');
   markTown(c, 'talked_clerk_2');
   await checkDusk(e);
 }
@@ -252,34 +228,25 @@ async function talkClerk(e: Env): Promise<void> {
 async function talkShrine(e: Env): Promise<void> {
   const { c } = e;
   // first visit opens with the greeting; later visits go straight to the same choices
-  if (!c.is('talked_shrine_2')) await c.say('白瀬', '……お参りかね。暑いのに、ご苦労さん');
-  const i = await c.choice(['おもてさまって、何ですか', 'お守りを、ください', 'いえ。……なんでも']);
+  if (!c.is('talked_shrine_2')) await c.play('ch2.shrine_greet');
+  const i = await c.choice(TL('ch2.choice_shrine'));
   if (i === 0) {
-    await c.say('白瀬', [
-      'この辺は昔、面見（おもてみ）いうてな。夜中に神隠しにおうた者は、体をなくして、白い面だけになる、言うんよ',
-      '面は目を閉じられんけん、眠れん。夜中に目ぇ覚ました者を、すきまから覗きに来る',
-      'ふたつ数えるあいだ目が合うたら、入られる。……ほやけん、夜中に目が覚めたら、朝まで目ぇつぶっとけ。昔はみんな、そうしよった',
-      '……ま、年寄りの話よ。眠れんのやったら、病院へ行かないかんよ',
-    ]);
+    await c.play('ch2.shrine_omote');
     if (c.has('coffee')) {
-      const j = await c.choice(['缶コーヒー、どうぞ', '……いえ']);
+      const j = await c.choice(TL('ch2.choice_coffee'));
       if (j === 0) {
         c.take('coffee');
-        c.toast('缶コーヒー（微糖） を渡した');
-        await c.say('白瀬', [
-          'おお、すまんね',
-          '……去年の夏な、裸足の娘さんが、毎晩、祠の前で目ぇつぶって座っとった',
-          '声かけたら『見ちゃだめ。目が合ったら、入られる』言うてな',
-        ]);
+        c.toast(T('ch2.toast_coffee'));
+        await c.play('ch2.shrine_coffee');
       } else {
-        await c.say('白瀬', '……そうかね'); // QA24: 「……いえ」にも反応
+        await c.play('ch2.shrine_coffee_no'); // QA24: 「……いえ」にも反応
       }
     }
   } else if (i === 1) {
-    await c.say('白瀬', '面守りよ。一度だけ、身代わりになってくれる');
+    await c.play('ch2.shrine_omamori');
     await c.shop('juyosho');
   } else {
-    await c.say('白瀬', 'そうかね。……お守りだけでも、受けていったらええ。気ぃつけて帰りなさいよ');
+    await c.play('ch2.shrine_nothing');
   }
   markTown(c, 'talked_shrine_2');
   await checkDusk(e);
@@ -288,15 +255,15 @@ async function talkShrine(e: Env): Promise<void> {
 // ── chapter ─────────────────────────────────────────────────────────────────
 export const ch2_day: ChapterDef = {
   id: 'ch2_day',
-  title: '一日目',
-  subtitle: '八月二十九日　午後零時四十分',
+  title: T('ch2.title'),
+  subtitle: T('ch2.subtitle'),
   time: 'day',
   spawn: 'spawn_bed',
   wakeUp: true,
   clock: { h: 12, m: 40, rate: 0.1 },
   ambience: 'room_tone',
   // money: carried over from ch1 (1,500 minus whatever was bought)
-  gameOverReason: '白い顔と、ふたつ数えるあいだ目が合ってしまった。',
+  gameOverReason: T('ch2.gameover'),
 
   setup(c) {
     // ── world (初期状態) ──
@@ -319,8 +286,8 @@ export const ch2_day: ChapterDef = {
     c.every(0.25, () => e.amb.tick());
 
     // ── NPCs ──
-    c.npc('npc_neighbor', { at: 'npc_neighbor_spot', label: 'ハツさんに話しかける', talk: () => talkHatsu(c) });
-    const saki = c.npc('npc_extra', { at: 'npc_extra_spot', label: '女の子に話しかける', talk: () => talkSaki(c) });
+    c.npc('npc_neighbor', { at: 'npc_neighbor_spot', label: T('ch2.label_hatsu'), talk: () => talkHatsu(c) });
+    const saki = c.npc('npc_extra', { at: 'npc_extra_spot', label: T('ch2.label_saki'), talk: () => talkSaki(c) });
     c.npc('npc_clerk', { at: 'npc_clerk_spot', talk: () => talkClerk(e) });
     // 白瀬 is 「授与所の窓口にいる」: face out of the office window (the model's +Z, turned by
     // the office's rot). The anchor's own yaw (90 on an office turned 90) leaves him side-on.
@@ -328,37 +295,30 @@ export const ch2_day: ChapterDef = {
 
     // ── room ──
     c.on('apt_phone', {
-      label: 'スマホを見る',
+      label: T('ch2.label_phone'),
       blind: false,
       use: async () => {
         if (c.is('read_doc_line_nao')) {
-          await c.mono('なおからの新しい連絡は、ない');
+          await c.play('ch2.phone_no_news');
           return;
         }
         await c.doc('doc_line_nao');
-        await c.say('透', '……『みてる』？');
-        await c.mono([
-          '俺が送ったのか。二時四十七分に',
-          '……覚えてない',
-          // QA11: say once, in the game, what Nao is to him
-          'なお。四月にコンビニで知り合って、夜にふらっと来て、話して、帰る',
-          '……付き合ってるのかって聞かれたら、たぶん二人とも答えられない',
-          '明るいうちに、ゆうべ顔が出たところも見ておこう',
-        ]);
+        // QA11: say once, in the game, what Nao is to him
+        await c.play('ch2.phone_line_nao');
         if (townCount(c) < 3) c.objective(townObjective(c));
         await checkDusk(e); // the town may already be done if the player went out first
       },
     });
     c.on('apt_trash', {
-      label: 'ゴミ箱を見る',
+      label: T('ch2.label_trash'),
       blind: false,
       use: async () => {
         await c.doc('doc_receipt');
-        await c.mono(['おとといの夜中の、三時六分？', 'ミルクティーなんて、買った覚えはない', '……行ってない。行ってない、はずだ']);
+        await c.play('ch2.trash_receipt');
       },
     });
     c.on('apt_desk', {
-      label: () => (c.prop('apt_desk').isOpen('drawer') ? '引き出しを閉める' : '机の引き出しを開ける'),
+      label: () => (c.prop('apt_desk').isOpen('drawer') ? T('ch2.label_desk_close') : T('ch2.label_desk_open')),
       blind: false,
       use: async () => {
         const desk = c.prop('apt_desk');
@@ -369,33 +329,28 @@ export const ch2_day: ChapterDef = {
         c.sfx('drawer_open', { at: 'apt_desk' });
         await desk.animate(1, 'drawer', 0.35);
         await c.doc('doc_clinic_card');
-        await c.mono(['今日の三時か。……検査の結果', 'ただの不眠だ。……今日は、いいや']);
+        await c.play('ch2.desk_clinic_card');
       },
     });
-    c.on('apt_medicine', { label: '薬の袋を見る', blind: false, use: () => c.mono('睡眠導入剤。……ほとんど減ってない') });
+    c.on('apt_medicine', { label: T('ch2.label_medicine'), blind: false, use: () => c.play('ch2.medicine') });
     c.on('apt_notebook', {
-      label: 'ノートを見る',
+      label: T('ch2.label_notebook'),
       blind: false,
       use: async () => {
         await c.doc('doc_notebook');
-        await c.mono('納品は31日。あと三日');
+        await c.play('ch2.notebook');
       },
     });
     c.on('apt_calendar', {
-      label: 'カレンダーを見る',
+      label: T('ch2.label_calendar'),
       blind: false,
       use: async () => {
-        await c.mono([
-          '八月。31日に、赤い丸',
-          '……「1ねん」？',
-          '俺の字じゃない。丸くて、少し右に傾いた字',
-          '何の日だっけ。……なおと会ったのは四月だし',
-        ]);
+        await c.play('ch2.calendar');
         c.set('read_calendar');
       },
     });
-    c.on('apt_photo', { label: '写真立てを見る', blind: false, use: () => c.mono('実家の柴犬。……元気かな') });
-    c.on('apt_breaker', { label: '分電盤を見る', blind: false, use: () => c.mono('剥がしたテープ。……俺の机の、マスキングテープだ') });
+    c.on('apt_photo', { label: T('ch2.label_photo'), blind: false, use: () => c.play('ch2.photo') });
+    c.on('apt_breaker', { label: T('ch2.label_breaker'), blind: false, use: () => c.play('ch2.breaker') });
     c.on('apt_fridge', {
       label: () => c.defaultLabel('apt_fridge'),
       blind: false,
@@ -404,12 +359,12 @@ export const ch2_day: ChapterDef = {
         await c.useDefault('apt_fridge');
         if (opening && !c.is('ch2_fridge_seen')) {
           c.set('ch2_fridge_seen');
-          await c.mono(['麦茶、卵、缶ビール。……顔なんて、いない', '扉のパッキンが、ゆるんでる。だから勝手に開くのか']);
+          await c.play('ch2.fridge_first');
         }
       },
     });
     c.on('apt_washer', {
-      label: () => (c.is('trace_washer') ? c.defaultLabel('apt_washer') : '洗濯機をのぞく'),
+      label: () => (c.is('trace_washer') ? c.defaultLabel('apt_washer') : T('ch2.label_washer')),
       blind: false,
       use: async () => {
         if (c.is('trace_washer')) {
@@ -421,11 +376,7 @@ export const ch2_day: ChapterDef = {
           c.sfx('lid_open', { at: 'apt_washer' });
           await washer.animate(1, 'lid', 0.5);
         }
-        await c.mono([
-          '糸くずフィルターに、何か挟まってる',
-          '洗濯ネット。マジックで「みやうち」',
-          '前に住んでた人のか。……この洗濯機、備え付けだもんな',
-        ]);
+        await c.play('ch2.washer_net');
         c.set('trace_washer');
       },
     });
@@ -436,17 +387,13 @@ export const ch2_day: ChapterDef = {
         const opening = !c.prop('apt_closet').isOpen('door_r');
         await c.useDefault('apt_closet');
         if (opening && !c.is('trace_closet')) {
-          await c.mono([
-            '床に、長い髪の毛と……紺のヘアゴム',
-            'なおのか？　この前来たとき――',
-            'いや。なおが、クローゼットなんか開けるか？',
-          ]);
+          await c.play('ch2.closet_hair');
           c.set('trace_closet');
         }
       },
     });
     c.on('apt_bath_mirror', {
-      label: () => (towelOn(c) ? 'タオルを外す' : c.defaultLabel('apt_bath_mirror')),
+      label: () => (towelOn(c) ? T('ch2.label_towel') : c.defaultLabel('apt_bath_mirror')),
       blind: false,
       use: async () => {
         if (!towelOn(c)) {
@@ -456,10 +403,10 @@ export const ch2_day: ChapterDef = {
         c.sfx('curtain', { at: 'apt_sink', volume: 0.6 });
         c.prop('apt_sink').showNode('towel', false);
         c.set('ch2_towel_off');
-        await c.mono('……ただの鏡だ。ひどい顔の、俺');
+        await c.play('ch2.mirror_towel_off');
       },
     });
-    c.on('apt_bathtub', { label: '浴槽を見る', blind: false, use: () => c.mono('床は、もう乾いてる。……ゆうべは、あんなにあふれてたのに') });
+    c.on('apt_bathtub', { label: T('ch2.label_bathtub'), blind: false, use: () => c.play('ch2.bathtub') });
     c.on('apt_door', {
       label: () => c.defaultLabel('apt_door'),
       blind: false,
@@ -467,26 +414,26 @@ export const ch2_day: ChapterDef = {
         if (!c.is('ch2_door_checked') && !c.prop('apt_door').isOpen()) {
           c.set('ch2_door_checked');
           // QA24: if he unhooked it himself in ch1 (to go out) and went to bed so, nothing is strange
-          if (c.get('ch1_chain_at_bed') === false) await c.mono(['チェーン、外れてる', '……ゆうべ、外したまま寝たんだ']);
-          else await c.mono(['チェーン、外れてる。……ゆうべ、かかってたはずだ', '寝ぼけて外したのか']);
+          if (c.get('ch1_chain_at_bed') === false) await c.play('ch2.door_chain_self');
+          else await c.play('ch2.door_chain_strange');
         }
         await c.useDefault('apt_door');
       },
     });
     let ending = false;
     c.on('apt_bed', {
-      label: () => (c.is('ch2_dusk') ? '少しだけ、横になる' : 'ベッド'),
+      label: () => (c.is('ch2_dusk') ? T('ch2.label_bed_dusk') : T('ch2.label_bed')),
       blind: false,
       use: async () => {
         if (!c.is('ch2_dusk')) {
-          await c.mono('まだ昼だ');
+          await c.play('ch2.bed_still_noon');
           return;
         }
         if (ending) return;
         ending = true;
         c.run(async () => {
           await c.lieDown();
-          await c.narrate('少しだけ、のつもりだった。');
+          await c.play('ch2.bed_sleep');
           await c.goto('ch3_night'); // town_count stays 3 (ch4 recounts its own from its setup)
         });
       },
@@ -494,41 +441,40 @@ export const ch2_day: ChapterDef = {
 
     // ── town ──
     c.on('ext_board', {
-      label: '張り紙を読む',
+      label: T('ch2.label_board'),
       blind: false,
       use: async () => {
         await c.doc('doc_poster_shizuku');
         if (c.is('town_board')) {
-          await c.mono('迷い猫のミケ。……ラジオ体操は、31日まで');
+          await c.play('ch2.board_again');
           return;
         }
-        await c.say('透', '二丁目。……ここじゃん');
-        await c.mono(['去年の、八月三十一日。午前三時', '……あと二日で、一年か']);
+        await c.play('ch2.board_first');
         markTown(c, 'town_board');
         if (!c.is('talked_saki_2')) await sakiFirst(c, saki); // さきの会話が自動で始まる
         await checkDusk(e);
       },
     });
-    c.on('ext_mailbox', { label: '集合ポストを見る', blind: false, use: () => c.mono('チラシばかりだ') });
-    c.on('conbini_fridge', { label: '冷蔵ケースを見る', blind: false, use: () => c.mono('ドリンクの冷蔵ケース。……ミルクティーが、並んでる') });
-    c.on('shr_yuisho', { label: '由緒書きを読む', blind: false, use: () => c.doc('doc_yuisho') });
+    c.on('ext_mailbox', { label: T('ch2.label_mailbox'), blind: false, use: () => c.play('ch2.mailbox') });
+    c.on('conbini_fridge', { label: T('ch2.label_conbini_fridge'), blind: false, use: () => c.play('ch2.conbini_fridge') });
+    c.on('shr_yuisho', { label: T('ch2.label_yuisho'), blind: false, use: () => c.doc('doc_yuisho') });
     c.on('shr_ema', {
-      label: '絵馬を見る',
+      label: T('ch2.label_ema'),
       blind: false,
       use: async () => {
         await c.doc('doc_ema');
-        if (c.is('read_doc_poster_shizuku')) await c.mono(['……しずく。張り紙の子だ', 'おねえちゃんが、いたのか']);
+        if (c.is('read_doc_poster_shizuku')) await c.play('ch2.ema_shizuku');
       },
     });
     c.on('shr_hokora', {
-      label: '祠を見る',
+      label: T('ch2.label_hokora'),
       blind: false,
-      use: () => c.mono(['林の奥の、小さな祠', '線香の燃えかすが、たくさん。……誰かが、何度もあげてる']),
+      use: () => c.play('ch2.hokora'),
     });
-    c.on('shr_shinboku', { label: '御神木を見る', blind: false, use: () => c.mono('大きな楠。しめ縄。……蝉の抜け殻が、いくつも') });
+    c.on('shr_shinboku', { label: T('ch2.label_shinboku'), blind: false, use: () => c.play('ch2.shinboku') });
     // 坂口 stands right behind the register: the counter's default line (店員の姿が見えない) would
     // contradict him, so aiming at the counter talks to him too.
-    c.on('conbini_counter', { label: '店員に話しかける', range: 2.8, blind: false, use: () => talkClerk(e) });
+    c.on('conbini_counter', { label: T('ch2.label_clerk'), range: 2.8, blind: false, use: () => talkClerk(e) });
     // World defaults that open a box (looks / shops). defaults.ts leaves them usable with closed
     // eyes; here they are sighted-only like every interaction of this chapter (5-0: blind:false,
     // rule 3). ext_vending (vending) / conbini_shelf (conbini) / conbini_atm / shr_saisen /
@@ -547,7 +493,7 @@ export const ch2_day: ChapterDef = {
       once: true,
       enter: async () => {
         c.sfx('water_ladle', { at: 'npc_neighbor_spot' });
-        await monoEyesSafe(c, '打ち水の音');
+        await monoEyesSafe(c, () => c.play('ch2.zone_neighbor'));
       },
     });
     // ハツ keeps sprinkling water while the player is around
@@ -562,10 +508,10 @@ export const ch2_day: ChapterDef = {
   },
 
   async intro(c) {
-    const lines = ['……昼だ', 'ゆうべのことは、夢だったのかもしれない'];
-    if (towelOn(c)) lines.push('……鏡のタオルは、かかったままだけど');
+    const lines = TL('ch2.intro_noon');
+    if (towelOn(c)) lines.push(T('ch2.intro_towel'));
     // QA15: charging the phone in ch1 is optional — if he didn't, someone plugged it in for him
-    lines.push(c.is('ch1_phone_charged') ? 'スマホ、充電できてる' : 'スマホが、充電ケーブルにささってる。……さした覚えは、ない');
+    lines.push(c.is('ch1_phone_charged') ? T('ch2.intro_phone_charged') : T('ch2.intro_phone_plugged'));
     await c.mono(lines);
     c.objective(currentObjective(c));
   },

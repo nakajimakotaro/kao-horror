@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Engine } from '../core/Engine';
+import { T } from '../script';
 
 /** Hand-held flashlight: lagging spot light with shadows, battery and a view model. */
 export class Flashlight {
@@ -68,8 +69,8 @@ export class Flashlight {
   /** Returns a message if the action failed. */
   toggle(battery: number): string | null {
     if (!this.owned) return null;
-    if (!this.enabled) return '今は使えない。';
-    if (!this.on && battery <= 0) return '電池が切れている。';
+    if (!this.enabled) return T('system.flashlight_disabled');
+    if (!this.on && battery <= 0) return T('system.flashlight_empty');
     this.on = !this.on;
     return null;
   }

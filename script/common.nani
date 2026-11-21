@@ -1,0 +1,459 @@
+; ==== どの章でも共通の「調べたときの反応」 ====
+
+; 章の台本（ch1.md など）に同じ物の反応があれば、そちらが優先される。ここは章で特に決めていないときの反応。
+; `xxx.label…` は照準を合わせたときの表示、`xxx`（後ろに何もつかない）は調べたときの心の声。
+
+; ==== 部屋（アパート 103号室） ====
+
+# switch.label
+; 照準を合わせたときの表示
+電気のスイッチを押す
+
+# switch.no_power
+カチッ……。つかない。
+
+# apt_fridge.label_close
+; 照準を合わせたときの表示（開いているとき）
+冷蔵庫を閉める
+
+# apt_fridge.label_open
+; 照準を合わせたときの表示（閉じているとき）
+冷蔵庫を開ける
+
+# apt_microwave.label
+; 照準を合わせたときの表示
+電子レンジを見る
+
+# apt_microwave
+; 調べたときの心の声
+電子レンジの時計が光っている。……こんな時間か。
+
+# apt_kitchen_drawer.label_open
+; 照準を合わせたときの表示（閉じているとき）
+引き出しを開ける
+
+# apt_kitchen_drawer.label_close
+; 照準を合わせたときの表示（開いているとき）
+引き出しを閉める
+
+# apt_washer.label_open
+; 照準を合わせたときの表示（閉じているとき）
+洗濯機のふたを開ける
+
+# apt_washer.label_close
+; 照準を合わせたときの表示（開いているとき）
+ふたを閉める
+
+# apt_shoebox.label_close
+; 照準を合わせたときの表示（開いているとき）
+靴箱を閉める
+
+# apt_shoebox.label_open
+; 照準を合わせたときの表示（閉じているとき）
+靴箱を開ける
+
+# apt_breaker.label_check
+ブレーカーを調べる
+
+# apt_breaker.label_open
+; 照準を合わせたときの表示（閉じているとき）
+分電盤のフタを開ける
+
+# apt_breaker.all_up
+ブレーカーは全部上がっている。
+
+# apt_breaker.tripped
+ブレーカーが落ちている……？
+
+# apt_door.label_close
+; 照準を合わせたときの表示（開いているとき）
+ドアを閉める
+
+# apt_door.label
+; 照準を合わせたときの表示
+玄関のドア
+
+# apt_door.choice_peephole
+; 玄関のドアを調べたときの選択肢
+覗き穴を見る
+
+# apt_door.choice_unlock
+; 玄関のドアを調べたときの選択肢
+鍵を開ける
+
+# apt_door.choice_lock
+; 玄関のドアを調べたときの選択肢
+鍵をかける
+
+# apt_door.choice_unchain
+; 玄関のドアを調べたときの選択肢
+チェーンを外す
+
+# apt_door.choice_chain
+; 玄関のドアを調べたときの選択肢
+チェーンをかける
+
+# apt_door.choice_open
+; 玄関のドアを調べたときの選択肢
+ドアを開ける
+
+# apt_door.choice_cancel
+; 玄関のドアを調べたときの選択肢
+やめる
+
+# apt_door.locked
+鍵がかかっている。
+
+# apt_door.chained
+チェーンがかかっていて開かない。
+
+# apt_bath_door.label_open
+; 照準を合わせたときの表示（閉じているとき）
+ユニットバスの扉を開ける
+
+# apt_bath_door.label_close
+; 照準を合わせたときの表示（開いているとき）
+扉を閉める
+
+# apt_room_door.label_open
+; 照準を合わせたときの表示（閉じているとき）
+引き戸を開ける
+
+# apt_room_door.label_close
+; 照準を合わせたときの表示（開いているとき）
+引き戸を閉める
+
+# apt_window.label_close
+; 照準を合わせたときの表示（開いているとき）
+窓を閉める
+
+# apt_window.label_open
+; 照準を合わせたときの表示（閉じているとき）
+窓を開ける
+
+# apt_window.curtain_closed
+カーテンが閉まっている。
+
+# apt_curtain.label_close
+; 照準を合わせたときの表示（開いているとき）
+カーテンを閉める
+
+# apt_curtain.label_open
+; 照準を合わせたときの表示（閉じているとき）
+カーテンを開ける
+
+# apt_toilet.label_open
+; 照準を合わせたときの表示（閉じているとき）
+トイレのふたを開ける
+
+# apt_toilet.label_close
+; 照準を合わせたときの表示（開いているとき）
+ふたを閉める
+
+# apt_bath_mirror.label
+; 照準を合わせたときの表示
+鏡を見る
+
+# apt_bath_mirror
+; 調べたときの心の声
+鏡に映った自分の顔。……ひどい顔だ。
+
+# apt_bathtub.label
+; 照準を合わせたときの表示
+浴槽を見る
+
+# apt_bathtub
+; 調べたときの心の声
+空っぽの浴槽。乾いている。
+
+# apt_shower_curtain.label_open
+; 照準を合わせたときの表示（閉じているとき）
+シャワーカーテンを開ける
+
+# apt_shower_curtain.label_close
+; 照準を合わせたときの表示（開いているとき）
+シャワーカーテンを閉める
+
+# apt_desk.label_open
+; 照準を合わせたときの表示（閉じているとき）
+机の引き出しを開ける
+
+# apt_desk.label_close
+; 照準を合わせたときの表示（開いているとき）
+引き出しを閉める
+
+# apt_tv.label
+; 照準を合わせたときの表示
+テレビをつける／消す
+
+# apt_lowtable.label
+; 照準を合わせたときの表示
+テーブルを見る
+
+# apt_lowtable
+; 調べたときの心の声
+飲みかけの缶チューハイと、リモコン。
+
+# apt_phone.label
+; 照準を合わせたときの表示
+スマホを見る
+
+# apt_phone
+; 調べたときの心の声
+スマホ。……画面がつかない。充電が切れている。
+
+# apt_bed.label
+; 照準を合わせたときの表示
+ベッド
+
+# apt_bed
+; 調べたときの心の声
+今は、眠れない。
+
+# apt_closet.label_open
+; 照準を合わせたときの表示（閉じているとき）
+クローゼットを開ける
+
+# apt_closet.label_close
+; 照準を合わせたときの表示（開いているとき）
+クローゼットを閉める
+
+# apt_photo.label
+; 照準を合わせたときの表示
+写真立てを見る
+
+# apt_photo
+; 調べたときの心の声
+写真立て。
+
+# apt_trash.label
+; 照準を合わせたときの表示
+ゴミ箱を見る
+
+# apt_trash
+; 調べたときの心の声
+丸めたレシートやティッシュが入っている。
+
+# apt_calendar.label
+; 照準を合わせたときの表示
+カレンダーを見る
+
+# apt_calendar
+; 調べたときの心の声
+八月のカレンダー。
+
+# apt_ac.label
+; 照準を合わせたときの表示
+エアコンを見る
+
+# apt_ac
+; 調べたときの心の声
+エアコン。……止まっている。
+
+# apt_medicine.label
+; 照準を合わせたときの表示
+薬の袋を見る
+
+# apt_medicine
+; 調べたときの心の声
+薬の袋だ。
+
+# apt_notebook.label
+; 照準を合わせたときの表示
+ノートを見る
+
+# apt_notebook
+; 調べたときの心の声
+ノートだ。
+
+# apt_ac_outdoor.label
+; 照準を合わせたときの表示
+室外機を見る
+
+# apt_ac_outdoor
+; 調べたときの心の声
+エアコンの室外機。
+
+; ==== 外 ====
+
+# ext_mailbox.label
+; 照準を合わせたときの表示
+集合ポストを見る
+
+# ext_mailbox
+; 調べたときの心の声
+集合ポスト。103のポストはチラシでいっぱいだ。
+
+# ext_vending.label_buy
+自販機で飲み物を買う
+
+# ext_vending.label
+; 照準を合わせたときの表示
+自販機を見る
+
+# ext_vending
+; 調べたときの心の声
+自販機が白く光っている。
+
+# ext_board.label
+; 照準を合わせたときの表示
+掲示板を見る
+
+# ext_board
+; 調べたときの心の声
+町内会の掲示板だ。
+
+# ext_curve_mirror.label
+; 照準を合わせたときの表示
+カーブミラーを見る
+
+# ext_curve_mirror
+; 調べたときの心の声
+カーブミラーに、ゆがんだ通りが映っている。
+
+# ext_garbage.label
+; 照準を合わせたときの表示
+ゴミ捨て場を見る
+
+# ext_garbage
+; 調べたときの心の声
+ゴミ捨て場。カラスよけのネットがかかっている。
+
+# ext_phonebooth.label
+; 照準を合わせたときの表示
+公衆電話を見る
+
+# ext_phonebooth
+; 調べたときの心の声
+公衆電話。まだあったのか。
+
+# ext_barrier.label
+; 照準を合わせたときの表示
+バリケードを見る
+
+# ext_barrier
+; 調べたときの心の声
+工事中で通行止めだ。この先には行けない。
+
+# ext_door.label
+; 照準を合わせたときの表示
+ドアを見る
+
+# ext_door
+; 調べたときの心の声
+他の部屋のドアだ。
+
+; ==== コンビニ ====
+
+# conbini_shelf.label
+; 照準を合わせたときの表示
+商品を見る
+
+# conbini_counter.label_talk
+店員に話しかける
+
+# conbini_counter.label
+; 照準を合わせたときの表示
+レジ
+
+# conbini_counter
+; 調べたときの心の声
+店員の姿が見えない。
+
+# conbini_fridge.label
+; 照準を合わせたときの表示
+冷蔵ケースを見る
+
+# conbini_fridge
+; 調べたときの心の声
+ドリンクがずらりと並んでいる。
+
+# conbini_magazine.label
+; 照準を合わせたときの表示
+雑誌棚を見る
+
+# conbini_magazine
+; 調べたときの心の声
+週刊誌の表紙に「真夏の怪奇特集」の文字。
+
+# conbini_atm.label
+; 照準を合わせたときの表示
+ATMを見る
+
+# conbini_atm
+; 調べたときの心の声
+ATM。残高は、見ないことにした。
+
+; ==== 神社 ====
+
+# shr_saisen.label
+; 照準を合わせたときの表示
+お参りする
+
+# shr_saisen
+; 調べたときの心の声
+……手を合わせた。
+
+# shr_chozuya.label
+; 照準を合わせたときの表示
+手を清める
+
+# shr_chozuya
+; 調べたときの心の声
+冷たい水で手を清めた。
+
+# shr_ema.label
+; 照準を合わせたときの表示
+絵馬を見る
+
+# shr_ema
+; 調べたときの心の声
+たくさんの絵馬が掛かっている。
+
+# shr_yuisho.label
+; 照準を合わせたときの表示
+由緒書きを読む
+
+# shr_yuisho
+; 調べたときの心の声
+神社の由緒が書かれている。
+
+# shr_komainu.label
+; 照準を合わせたときの表示
+狛犬を見る
+
+# shr_komainu
+; 調べたときの心の声
+狛犬が、こちらをにらんでいる。
+
+# shr_haiden.label
+; 照準を合わせたときの表示
+拝殿を見る
+
+# shr_haiden
+; 調べたときの心の声
+古い拝殿。格子戸は閉まっている。
+
+# shr_shinboku.label
+; 照準を合わせたときの表示
+御神木を見る
+
+# shr_shinboku
+; 調べたときの心の声
+大きな御神木。しめ縄が巻かれている。
+
+# shr_hokora.label
+; 照準を合わせたときの表示
+祠を見る
+
+# shr_hokora
+; 調べたときの心の声
+林の奥の、小さな祠。
+
+# shr_kura.label
+; 照準を合わせたときの表示
+蔵を見る
+
+# shr_kura
+; 調べたときの心の声
+古い蔵。重い錠前がかかっている。

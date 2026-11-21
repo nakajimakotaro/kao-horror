@@ -1,12 +1,13 @@
 import './styles.css';
 import { Game } from './game/Game';
+import { T } from './script';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const ui = document.getElementById('ui') as HTMLElement;
 if (matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches) {
   const warn = document.createElement('div');
   warn.style.cssText = 'position:fixed;left:0;right:0;top:0;padding:10px;background:#300;color:#fdd;font:13px sans-serif;text-align:center;z-index:9;pointer-events:none';
-  warn.textContent = 'このゲームはパソコン（キーボードとマウス）向けです。';
+  warn.textContent = T('system.mobile_warning');
   document.body.append(warn);
 }
 const game = new Game(canvas, ui);

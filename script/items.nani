@@ -1,0 +1,116 @@
+; ==== アイテムとお店 ====
+
+; `xxx.name` が名前、`xxx.desc` が説明（行を分けると説明の中で改行される）。
+
+; ==== アイテム ====
+
+# flashlight.name
+懐中電灯
+
+# flashlight.desc
+いつもの黒い懐中電灯。冷蔵庫に入っていたのに、持ち手だけがぬるかった。
+[F] で点灯・消灯。
+
+# battery.name
+単三電池
+
+# battery.desc
+懐中電灯の予備の電池。切れたら自動で入れ替える。
+
+# omamori.name
+面守り（おもてまもり）
+
+# omamori.desc
+; QA15: 「……祠の前では効かない、と宮司は言った」は入れない（第2章で買えるが、白瀬がそう言うのは第4章）
+月見神社のお守り。白い面の刺繍がある。一度だけ身代わりになって砕けるという。
+
+# incense.name
+線香「月光」
+
+# incense.desc
+小箱の線香とマッチ。聞いたことのない銘柄だ。
+
+# coffee.name
+缶コーヒー（微糖）
+
+# coffee.desc
+アパート前の自販機の缶コーヒー。
+
+# milktea.name
+ロイヤルミルクティー
+
+# milktea.desc
+甘いミルクティー。……なぜか、手が伸びた。
+
+# diary.name
+しずくの日記
+
+# diary.desc
+天袋から落ちてきた小さなノート。表紙に「しずく」。
+
+# hairpin.name
+ひまわりのヘアピン
+
+# hairpin.desc
+祠に供えてあった。一年前のものにしては、新しすぎる。
+
+# number_memo.name
+張り紙の番号のメモ
+
+# number_memo.desc
+張り紙の「家族」の電話番号を書き写した。日記を返すつもりだった。
+
+# coin10.name
+十円玉
+
+# coin10.desc
+自販機の釣り銭口に残っていた十円玉。
+
+; ==== お店 ====
+
+; `shop_店.title` が店の名前。品物は `shop_店.アイテム.name` / `.desc`（お店での表示名と説明）。
+
+# shop_conbini.title
+ツキミマート
+
+# shop_conbini.battery.name
+単三電池（2本）
+
+# shop_conbini.battery.desc
+いつもの電池。
+
+# shop_conbini.incense.name
+線香「月光」
+
+# shop_conbini.incense.desc
+仏壇用の小箱。マッチつき。
+
+# shop_conbini.milktea.name
+ロイヤルミルクティー
+
+# shop_conbini.milktea.desc
+冷蔵ケースの甘いミルクティー。
+
+# shop_vending.title
+アパート前の自販機
+
+# shop_vending.coffee.name
+缶コーヒー（微糖）
+
+# shop_vending.coffee.desc
+自販機の缶コーヒー。
+
+# shop_vending.milktea.name
+ロイヤルミルクティー（缶）
+
+# shop_vending.milktea.desc
+甘いミルクティーの缶。コンビニより少し安い。
+
+# shop_juyosho.title
+月見神社　授与所
+
+# shop_juyosho.omamori.name
+面守り
+
+# shop_juyosho.omamori.desc
+白い面の刺繍のお守り。一度だけ、身代わりになって砕けるという。（各章1つまで）

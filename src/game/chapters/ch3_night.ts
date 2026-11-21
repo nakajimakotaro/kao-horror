@@ -3,6 +3,7 @@ import type { SoundHandle } from '../../audio/AudioEngine';
 import type { V3 } from '../../world/types';
 import type { ChapterDef } from '../Chapter';
 import type { Ctx } from '../Ctx';
+import { T, TL } from '../../script';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  第3章　ch3_night「二日目　午前三時」（docs/SCENARIO.md §5 第3章）
@@ -40,9 +41,6 @@ import type { Ctx } from '../Ctx';
 //  Flags read from earlier chapters: ch2_towel_off (the towel line after the lid) — otherwise the
 //  night is rebuilt from scratch.
 // ─────────────────────────────────────────────────────────────────────────────
-
-const GAME_OVER = '白い顔と、ふたつ数えるあいだ目が合ってしまった。';
-const GAME_OVER_FAKE_SLEEP = '……起きてたんだ。';
 
 /** Flags this chapter writes; cleared whenever it starts from its head. (nao_trust is cumulative: untouched.) */
 const OWN_FLAGS = [
@@ -229,19 +227,19 @@ function wire(c: Ctx): Run {
 
   // ── テレビ ────────────────────────────────────────────────────────────────
   const intro = async (): Promise<void> => {
-    await c.mono(['テレビの音で、目が覚めた', '……消して、寝たはずだ']);
+    await c.play('ch3.wake_tv');
     await c.wait(0.5);
     if (c.is('ch3_tv_off')) return;
     // F3-1: in the static, right in front of the bed
     c.face('anc_tv_screen', {
       type: 'fleeting', style: 'flat', lethal: 3, vanishAfter: 1.8,
-      onSeen: () => c.run(() => c.mono('砂嵐の中に――顔')),
+      onSeen: () => c.run(() => c.play('ch3.tv_face')),
     });
-    c.objective('テレビを消す');
+    c.objective(T('ch3.obj_tv_off'));
   };
 
   c.on('apt_tv', {
-    label: () => (c.is('ch3_tv_off') ? c.defaultLabel('apt_tv') : 'テレビを消す'),
+    label: () => (c.is('ch3_tv_off') ? c.defaultLabel('apt_tv') : T('ch3.label_tv_off')),
     blind: false,
     use: async () => {
       if (c.is('ch3_tv_off')) {
@@ -254,9 +252,9 @@ function wire(c: Ctx): Run {
       st.tvLoop?.stop(0.15);
       st.tvLoop = null;
       c.clearFace('anc_tv_screen');
-      await c.mono(['……', '足の裏が、ざらざらする', '……土だ。俺、外に出たのか？']);
+      await c.play('ch3.tv_off_soil');
       // the genkan event waits for the TV, so this can never roll the objective back
-      if (!c.is('ch3_genkan')) c.objective('玄関を確かめる');
+      if (!c.is('ch3_genkan')) c.objective(T('ch3.obj_genkan'));
     },
   });
 
@@ -267,22 +265,22 @@ function wire(c: Ctx): Run {
     c.set('ch3_genkan');
     await eyesOpen(c); // what he sees (the zone also fires while walking with the eyes shut)
     // QA #15: he went out barefoot (soil on his soles) — the sandals were never his clue
-    await c.mono(['鍵が、開いてる。チェーンも垂れてる', '玄関に、泥の足跡。……裸足の']);
+    await c.play('ch3.genkan_open');
     c.sfx('hyoshigi', { volume: 0.9 });
     await c.wait(1.4);
-    await keepShut(c, () => c.mono('遠くで、拍子木。……夜回り？　こんな時間に'));
-    if (!c.is('locked_both')) c.objective('玄関の鍵とチェーンをかける');
+    await keepShut(c, () => c.play('ch3.genkan_hyoshigi'));
+    if (!c.is('locked_both')) c.objective(T('ch3.obj_lock'));
   };
   c.zone('zone_apt_genkan', { enter: () => genkan() });
 
   /** both the lock and the chain are on */
   const lockedBoth = async (): Promise<void> => {
-    await c.mono('……よし');
+    await c.play('ch3.locked_both');
     c.set('locked_both');
     await c.wait(0.8);
     c.sfx('water_drip', { at: 'anc_toilet_bowl', volume: 2 });
-    await keepShut(c, () => c.mono('……浴室で、水の音'));
-    if (!c.is('toilet_closed')) c.objective(st.bathEntered ? 'トイレのふたを閉める' : '浴室を確かめる');
+    await keepShut(c, () => c.play('ch3.bath_water'));
+    if (!c.is('toilet_closed')) c.objective(st.bathEntered ? T('ch3.obj_toilet_lid') : T('ch3.obj_bath'));
   };
 
   // ── ピンポン：覗き穴・ノック・なおの声・ドアを開ける ─────────────────────────
@@ -292,7 +290,7 @@ function wire(c: Ctx): Run {
     st.voiceStarted = true;
     c.sfx('knock', { at: 'apt_door', volume: 1.4, rolloff: 0.6 }); // the knock sample is three knocks
     await c.wait(1.3);
-    await keepShut(c, () => c.say('なお', '……透くん？　……私。なお'));
+    await keepShut(c, () => c.play('ch3.nao_voice'));
     // Nao steps into the door scope's view while the corridor light blinks off (共通ルール5)
     const lamp = c.light('ext_corridor_light');
     const hide = st.peeping;
@@ -307,11 +305,10 @@ function wire(c: Ctx): Run {
     }
     if (st.peeping) await eyesOpen(c); // she is seen, not heard: only once the eyes open
     if (st.peeping) {
-      await c.mono(st.peepFaceShown
-        ? ['スマホの画面に、下から照らされた顔。……なおだ', 'さっきの顔と、同じ高さ。同じ白さ']
-        : 'スマホの画面に、下から照らされた顔。……なおだ');
+      if (st.peepFaceShown) await c.play('ch3.nao_seen_after_face');
+      else await c.play('ch3.nao_seen');
     } else {
-      await keepShut(c, () => c.mono('……なおの、声だ'));
+      await keepShut(c, () => c.play('ch3.nao_heard'));
     }
     c.set('ch3_nao_voice');
   };
@@ -323,8 +320,8 @@ function wire(c: Ctx): Run {
     // it vanishes at 80 % of the stare at the latest (harmless only as a safety net)
     const f = c.face('anc_door_outside', { type: 'static', lethal: 2.5, harmless: true });
     c.run(async () => {
-      await c.mono(['暗い外廊下に、白い顔が浮いている', '……見るな']);
-      c.hint('[Space] で目を閉じる　[E] で覗き穴から離れる', 7);
+      await c.play('ch3.peep_face');
+      c.hint(T('ch3.hint_peep_face'), 7);
       // gone after looking away for 1 s, or 3 s after the monologue (the stare only counts once
       // the box is closed), or before the stare reaches 2 of its 2.5 s
       let last = f.age;
@@ -350,7 +347,7 @@ function wire(c: Ctx): Run {
       await c.peephole({
         onEnter: () => {
           if (bell && !st.voiceStarted && !st.peepFaceShown) peepFace(); // its own hint, after the monologue
-          else if (!st.peepHinted) c.hint('[E] で覗き穴から離れる', 5);
+          else if (!st.peepHinted) c.hint(T('ch3.hint_peep_leave'), 5);
           st.peepHinted = true;
         },
       });
@@ -365,15 +362,15 @@ function wire(c: Ctx): Run {
   const openDoor = async (): Promise<void> => {
     if (st.opening || c.is('nao_in')) return;
     st.opening = true;
-    const i = await keepShut(c, () => c.choice(['開ける', '……開けない']));
+    const i = await keepShut(c, () => c.choice(TL('ch3.choice_open_door')));
     if (i === 0) {
       c.inc('nao_trust');
     } else {
-      await keepShut(c, () => c.say('なお', '……透くん。電話くれたでしょ。……お願い、開けて'));
+      await keepShut(c, () => c.play('ch3.nao_please'));
       c.sfx('ringtone', { at: 'apt_phone', volume: 3, rolloff: 0.5 });
       await c.wait(2.0);
-      await keepShut(c, () => c.mono('スマホが鳴ってる。……なおからだ'));
-      await keepShut(c, () => c.choice(['……開ける']));
+      await keepShut(c, () => c.play('ch3.phone_rings_nao'));
+      await keepShut(c, () => c.choice(TL('ch3.choice_open_door_again')));
     }
     await c.cutscene(async () => {
       c.lock('apt_door', false);
@@ -389,16 +386,12 @@ function wire(c: Ctx): Run {
       c.npc('npc_nao', { at: 'npc_nao_genkan' });
       c.teleport(GENKAN_STAND);
       await c.fadeIn(0.35);
-      await c.say('なお', 'ごめん、こんな時間に');
-      await c.say('透', '……なんで');
-      await c.say('なお', '電話くれたでしょ。三時前に。……『顔が見てる、来て』って');
-      await c.say('透', '……覚えてない');
-      await c.say('なお', ['……そっか。声、変だったもんね。寝ぼけてたんだよ', 'たまたま近くにいたから。……上がっていい？']);
+      await c.play('ch3.nao_enters');
       c.sfx('door_close', { at: 'apt_door' });
       await door.animate(0, 'leaf', 0.7);
       c.sfx('door_lock', { at: 'apt_door' });
       c.lock('apt_door', true);
-      await c.mono('なおが、鍵をかけた');
+      await c.play('ch3.nao_locks');
       await c.fadeOut(0.5);
       c.hideNpc('npc_nao');
       showNaoRoom(true);
@@ -406,15 +399,15 @@ function wire(c: Ctx): Run {
       c.set('nao_in');
       await c.fadeIn(0.5);
     });
-    c.objective('なおと話す');
+    c.objective(T('ch3.obj_talk_nao'));
   };
 
   c.on('apt_door', {
-    label: () => (c.is('nao_in') ? '玄関' : c.defaultLabel('apt_door')),
+    label: () => (c.is('nao_in') ? T('ch3.label_genkan') : c.defaultLabel('apt_door')),
     blind: false,
     use: async () => {
       if (c.is('nao_in')) {
-        await c.mono('なおを置いて、出るわけにはいかない');
+        await c.play('ch3.door_cant_leave');
         return;
       }
       if (door.isOpen()) return;
@@ -424,14 +417,14 @@ function wire(c: Ctx): Run {
         return;
       }
       if (c.is('bell_rang')) {
-        const i = await c.choice(['覗き穴を見る', 'ドアを開ける', 'やめる']);
+        const i = await c.choice(TL('ch3.choice_door_bell'));
         if (i === 0) {
           await peep();
         } else if (i === 1) {
           if (!st.voiceStarted) {
             // QA #25: not past the face and 「顔かと思ったら、なお」 — the scope first.
             // (Nobody looking still gets the knock and the voice, 10 s after the bell.)
-            await c.mono('……誰だ。先に、覗き穴だ');
+            await c.play('ch3.door_peep_first');
           } else {
             // the knock has started: the voice runs on by itself, then the choice
             await until(() => c.is('ch3_nao_voice'));
@@ -443,20 +436,20 @@ function wire(c: Ctx): Run {
       // before the doorbell: lock it, but do not go out
       await genkan();
       const canLock = c.is('ch3_genkan') && !c.is('locked_both');
-      const opts = ['覗き穴を見る'];
-      if (canLock && !c.isLocked('apt_door')) opts.push('鍵をかける');
-      if (canLock && !c.isLocked('apt_door_chain')) opts.push('チェーンをかける');
-      opts.push('ドアを開ける', 'やめる');
-      const pick = opts[await c.choice(opts)];
-      if (pick === '覗き穴を見る') await peep();
-      else if (pick === '鍵をかける') {
+      const opts: [id: string, text: string][] = [['peep', T('ch3.choice_door_peep')]];
+      if (canLock && !c.isLocked('apt_door')) opts.push(['lock', T('ch3.choice_door_lock')]);
+      if (canLock && !c.isLocked('apt_door_chain')) opts.push(['chain', T('ch3.choice_door_chain')]);
+      opts.push(['open', T('ch3.choice_door_open')], ['cancel', T('ch3.choice_door_cancel')]);
+      const pick = opts[await c.choice(opts.map((o) => o[1]))][0];
+      if (pick === 'peep') await peep();
+      else if (pick === 'lock') {
         c.sfx('door_lock', { at: 'apt_door' });
         c.lock('apt_door', true);
-      } else if (pick === 'チェーンをかける') {
+      } else if (pick === 'chain') {
         c.sfx('chain', { at: 'apt_door' });
         setChain(true);
-      } else if (pick === 'ドアを開ける') {
-        await c.mono('……外に出る気には、なれない');
+      } else if (pick === 'open') {
+        await c.play('ch3.door_no_go_out');
       }
       if (canLock && c.isLocked('apt_door') && c.isLocked('apt_door_chain')) await lockedBoth();
     },
@@ -467,17 +460,17 @@ function wire(c: Ctx): Run {
   c.when(() => c.is('locked_both') && !c.is('toilet_closed') && c.inZone('zone_apt_bath'), () => {
     if (c.is('toilet_closed')) return;
     st.bathEntered = true;
-    c.objective('トイレのふたを閉める'); // QA #3: the objective says what checking the bath means
+    c.objective(T('ch3.obj_toilet_lid')); // QA #3: the objective says what checking the bath means
     c.face('anc_toilet_bowl', {
       type: 'static',
-      onSeen: () => c.run(() => c.mono(['ふたの中に――', 'ゆうべ、閉めたのに'])),
+      onSeen: () => c.run(() => c.play('ch3.toilet_face')),
     });
   });
 
   c.on('apt_toilet', {
     label: () => {
       if (!c.is('locked_both')) return null; // QA #3: the lid waits until the door is locked
-      if (!c.is('toilet_closed') && c.prop('apt_toilet').isOpen('lid')) return 'トイレのふたを閉める';
+      if (!c.is('toilet_closed') && c.prop('apt_toilet').isOpen('lid')) return T('ch3.label_toilet_lid');
       return c.player.eyesClosed ? null : c.defaultLabel('apt_toilet'); // only the closing is 〔閉眼可〕
     },
     blind: true,
@@ -494,12 +487,13 @@ function wire(c: Ctx): Run {
       await c.wait(0.5);
       await eyesOpen(c); // closed blind: the towel is noticed once the eyes open (at most the 8 s rule)
       // 第2章で自分でタオルを外していた（ch2_towel_off）なら、床にあるのは不思議ではない
-      await c.mono(c.is('ch2_towel_off') ? ['タオルが、床に落ちてる', '……昼に外して、そのままだった'] : ['タオルも、床に落ちてる', '……誰が']);
+      if (c.is('ch2_towel_off')) await c.play('ch3.towel_floor_own');
+      else await c.play('ch3.towel_floor');
       c.checkpoint('ch3_bell');
       c.run(async () => {
         await c.wait(1.0);
         c.sfx('phone_vibrate', { at: 'apt_phone', volume: 2, rolloff: 0.5 });
-        c.objective('スマホを見る');
+        c.objective(T('ch3.obj_phone'));
       });
     },
   });
@@ -507,7 +501,7 @@ function wire(c: Ctx): Run {
   c.on('apt_bath_mirror', {
     label: () => {
       if (c.is('ch3_towel')) return null;
-      if (c.is('toilet_closed')) return 'タオルをかけ直す';
+      if (c.is('toilet_closed')) return T('ch3.label_towel');
       return c.defaultLabel('apt_bath_mirror');
     },
     blind: false,
@@ -521,13 +515,13 @@ function wire(c: Ctx): Run {
       c.sfx('curtain', { at: 'apt_sink', volume: 0.6 });
       sink.showNode('towel_floor', false);
       sink.showNode('towel', true);
-      await c.mono('……これでいい');
+      await c.play('ch3.towel_back');
     },
   });
 
   // ── スマホ（→ピンポン） ──────────────────────────────────────────────────
   c.on('apt_phone', {
-    label: () => (c.is('toilet_closed') ? 'スマホを見る' : null),
+    label: () => (c.is('toilet_closed') ? T('ch3.label_phone') : null),
     blind: false,
     use: async () => {
       if (c.is('read_doc_call_log')) {
@@ -535,15 +529,15 @@ function wire(c: Ctx): Run {
         return;
       }
       await c.doc('doc_call_log');
-      await c.say('透', ['二時五十八分。……なおに、電話してる。一分も', '……俺が？']);
+      await c.play('ch3.call_log');
       await c.wait(1.5);
       clockAtLeast(c, 3, 3, 0.05);
       c.sfx('doorbell');
       c.set('bell_rang');
-      await keepShut(c, () => c.mono(['……こんな時間に', '――顔、か？']));
+      await keepShut(c, () => c.play('ch3.bell'));
       await c.wait(2.0);
       c.sfx('doorbell');
-      c.objective('玄関を確かめる（覗き穴）');
+      c.objective(T('ch3.obj_peephole'));
       // nobody looks through the scope for 10 s → the knock and the voice come anyway
       c.after(10, () => {
         if (!st.peepEntered && !st.voiceStarted) c.run(naoVoice);
@@ -558,7 +552,7 @@ function wire(c: Ctx): Run {
     use: async () => {
       const opening = !c.prop('apt_fridge').isOpen('door');
       await c.useDefault('apt_fridge');
-      if (opening) await c.mono('麦茶と、卵。……何もいない');
+      if (opening) await c.play('ch3.fridge_nothing');
     },
   });
 
@@ -566,13 +560,11 @@ function wire(c: Ctx): Run {
   const naoTalk = async (): Promise<void> => {
     if (c.is('ch3_nao_talked')) return;
     await c.cutscene(async () => {
-      await c.say('なお', '……顔、って？');
-      const i = await c.choice(['冷蔵庫の中に、白い顔が見えた', '……なんでもない。寝ぼけてた']);
-      if (i === 0) await c.say('なお', ['……そっか', '見ないようにしなよ。……目、合わせちゃだめだよ']);
-      else await c.say('なお', 'ふーん。……ならいいけど');
-      await c.say('なお', ['透くん、最近ずっと顔色わるいよ', '病院、行かなかったの？　……いいよ、行かなくて。疲れてるだけだって']);
-      await c.mono('……なおは、いつもそう言う');
-      await c.say('なお', 'ちょっと、トイレ借りるね');
+      await c.play('ch3.talk_face');
+      const i = await c.choice(TL('ch3.choice_talk_face'));
+      if (i === 0) await c.play('ch3.talk_face_told');
+      else await c.play('ch3.talk_face_hid');
+      await c.play('ch3.talk_pale');
       // she goes into the unit bath (moved during a short blackout)
       await c.fadeOut(0.4);
       c.hideNpc('npc_nao_sit');
@@ -580,16 +572,16 @@ function wire(c: Ctx): Run {
       c.sfx('door_close', { at: 'apt_bath_door' });
       await c.fadeIn(0.4);
       await c.wait(0.6);
-      await c.mono('なおのトートバッグが、口を開けたまま置いてある');
-      const b = await c.choice(['……中を見る', '見ない']);
+      await c.play('ch3.bag');
+      const b = await c.choice(TL('ch3.choice_bag'));
       if (b === 0) {
-        await c.mono(['財布、ハンカチ、のど飴。……鍵束', '家の鍵と、もう一本。白い札に、油性ペンで「103」。小さな鈴']);
+        await c.play('ch3.bag_key');
         c.sfx('suzu', { at: 'npc_nao_room' });
         await c.wait(0.7);
-        await c.mono(['……103？　うちの、番号？', '見間違いだ。……俺はもう、自分の目を信用していない']);
+        await c.play('ch3.bag_key_doubt');
         c.set('saw_key');
       } else {
-        await c.mono('……見るもんじゃない');
+        await c.play('ch3.bag_no');
         c.inc('nao_trust');
       }
       await c.wait(1.0);
@@ -602,13 +594,11 @@ function wire(c: Ctx): Run {
       showNaoRoom(false);
       clockAtLeast(c, 3, 30, 0.05); // 「三時半だよ」
       await c.fadeIn(0.4);
-      await c.say('なお', ['……もう寝なよ。三時半だよ', '寝てていいよ。……見てるから']);
-      await c.say('透', '……見てるって');
-      await c.say('なお', '顔が来ないように。……大丈夫。目、つぶってたら大丈夫だから');
+      await c.play('ch3.talk_sleep');
       c.set('ch3_nao_talked');
       c.checkpoint('ch3_bed');
     });
-    c.objective('ベッドで眠る');
+    c.objective(T('ch3.obj_bed'));
   };
 
   // ── 寝たふり ─────────────────────────────────────────────────────────────
@@ -617,7 +607,7 @@ function wire(c: Ctx): Run {
     st.sleepStarting = true;
     c.objective(null); // 「横になる」で達成。寝たふりの間は目標を出さない
     await c.lieAwake({ yaw: 75 });
-    c.gameOverReason = GAME_OVER_FAKE_SLEEP;
+    c.gameOverReason = T('ch3.gameover_fake_sleep');
     c.sfx('switch_click', { at: 'apt_switch_room' });
     const sw = c.prop('apt_switch_room');
     void sw.animate(sw.isOpen() ? 0 : 1, undefined, 0.08);
@@ -627,7 +617,7 @@ function wire(c: Ctx): Run {
     c.tv('off');
     // she gets up in the dark while his eyes are on the ceiling (共通ルール5)
     c.hideNpc('npc_nao_sit');
-    await c.mono('なおが、電気を消した');
+    await c.play('ch3.lights_off');
     naoBedsideSit();
     // QA #25: the lying view starts on Nao's side and low — she is in view a little off the center,
     // the ceiling (段D) is not
@@ -637,15 +627,15 @@ function wire(c: Ctx): Run {
       const a = aimFrom(L.o.pos, head);
       await turnInBed(c, a.yaw - 24, a.pitch + 2, 1.6); // she stays outside the WATCH_DEG cone
     }
-    await c.mono(['……眠れるわけがない', '目を閉じて、眠ったふりをしよう', 'でも、閉じっぱなしだと、本当に眠ってしまう']);
-    c.hint('[Space] で目を閉じる。閉じ続けると、本当に眠ってしまう。[マウス] で横を向ける', 10);
+    await c.play('ch3.fake_sleep');
+    c.hint(T('ch3.hint_fake_sleep'), 10);
     st.sleep.on = true;
   };
 
   c.on('apt_bed', {
     label: () => {
       if (!c.is('ch3_nao_talked')) return c.defaultLabel('apt_bed');
-      return st.sleepStarting ? null : '横になる';
+      return st.sleepStarting ? null : T('ch3.label_lie_down');
     },
     blind: false,
     use: async () => {
@@ -662,18 +652,18 @@ function wire(c: Ctx): Run {
     st.sleep.stage = 1;
     naoBedsideSit(); // (eyes closed) back on her spot, phone raised
     c.sfx('rec_beep', { at: v(PHONE_BEDSIDE) });
-    c.sub(null, '（ピッ、と小さな電子音）', 3);
+    c.subLine('ch3.sub_rec_beep', 3);
   };
   /** 段B: the whisper. */
   const stageB = (): void => {
     st.sleep.stage = 2;
     c.sfx('whisper_shizuku', { at: v(EAR), volume: 0.8 });
-    c.sub('なお', '……しずく', 2.2);
+    c.subLine('ch3.sub_whisper', 2.2);
     c.set('heard_whisper'); // QA #25: with the first line — falling asleep right after still heard it
     c.run(async () => {
       await c.wait(2);
       if (ended() || st.sleep.stage !== 2) return;
-      c.sub('なお', '……覚えてる？　ひまわり畑の――', 3.5);
+      c.subLine('ch3.sub_himawari', 3.5);
     });
   };
   /** 段C: Nao at the open fridge, past the sliding door. */
@@ -687,7 +677,7 @@ function wire(c: Ctx): Run {
     c.light('apt_fridge_light').setOn(true);
     c.sfx('fridge_open', { at: 'apt_fridge', rolloff: 0.5 });
     void c.prop('apt_fridge').animate(1, 'door', 0.55);
-    c.sub(null, '（冷蔵庫の開く音）', 3);
+    c.subLine('ch3.sub_fridge_open', 3);
   };
   /** 段D: back to the bed — and the face right above the pillow (F3-4, 6 s). */
   const stageD = (): void => {
@@ -709,7 +699,7 @@ function wire(c: Ctx): Run {
       c.npc('npc_nao', { at: 'npc_nao_bedside', yaw: -90 });
       // 予兆（QA #25）: breathing right above. Turned to the side, the face stays at the edge of view
       c.sfx('breathing', { at: v(ABOVE_PILLOW) });
-      c.sub(null, '（……真上で、何かが息をしている）', 3);
+      c.subLine('ch3.sub_breathing', 3);
       c.fear(0.3, 2);
       await c.wait(1.6);
       if (ended()) return;
@@ -717,7 +707,7 @@ function wire(c: Ctx): Run {
       await unseen(c, c.anchor('anc_ceiling_bed'), 30, 3);
       if (ended()) return;
       const f = c.face('anc_ceiling_bed', { type: 'static' });
-      c.sub('なお', '……寝た？', 3);
+      c.subLine('ch3.sub_neta', 3);
       c.fear(0.5, 6);
       await c.wait(6);
       if (ended()) return;
@@ -749,9 +739,9 @@ function wire(c: Ctx): Run {
       c.gameOverReason = null;
       await c.wait(0.9);
       c.eyes(false); // 目は自動で開く
-      await c.mono(['……鍵', '外から、鍵がかかった', '俺、なおに鍵なんて、渡してない']);
+      await c.play('ch3.heard_lock');
       await c.fadeOut(1.5);
-      await c.narrate('眠れないまま、窓の外が白くなった。');
+      await c.play('ch3.dawn');
       await c.goto('ch4_day');
     });
   };
@@ -781,7 +771,7 @@ function wire(c: Ctx): Run {
         sl.watch = 0;
         sl.stage = 0;
         sl.acc = 0;
-        c.sub('なお', '……起きてる？', 3);
+        c.subLine('ch3.sub_okiteru', 3);
       }
     } else {
       sl.watch = 0;
@@ -791,7 +781,7 @@ function wire(c: Ctx): Run {
       const h = npcHead(c, 'npc_nao', 1.45);
       if (h && lookingAt(c, h, 28)) {
         sl.sawFridge = true;
-        c.sub('なお', '……いないね', 3);
+        c.subLine('ch3.sub_inaine', 3);
       }
     }
   };
@@ -805,7 +795,7 @@ function wire(c: Ctx): Run {
     c.run(async () => {
       c.eyes(true);
       c.clearFaces();
-      c.sub(null, '（……なおの声が、遠くなる）', 4);
+      c.subLine('ch3.sub_fading', 4);
       await c.fadeOut(2.2);
       c.set('slept_ch3');
       c.gameOverReason = null;
@@ -827,13 +817,13 @@ function wire(c: Ctx): Run {
     c.light('apt_light_room').setOn(true);
     showNaoRoom(false);
     clockAtLeast(c, 3, 30, 0.05); // the checkpoint keeps the clock; never before 「三時半だよ」
-    c.objective('ベッドで眠る');
+    c.objective(T('ch3.obj_bed'));
   } else if (tag === 'ch3_bell') {
     // TV off (world reset), locked up, lid closed; the clock comes back from the checkpoint
     c.lock('apt_door', true);
     setChain(true);
     c.prop('apt_toilet').setOpen(0, 'lid');
-    c.objective('スマホを見る');
+    c.objective(T('ch3.obj_phone'));
     c.after(1.0, () => {
       c.sfx('phone_vibrate', { at: 'apt_phone', volume: 2, rolloff: 0.5 });
     });
@@ -857,14 +847,14 @@ function wire(c: Ctx): Run {
 
 export const ch3_night: ChapterDef = {
   id: 'ch3_night',
-  title: '二日目',
-  subtitle: '八月三十日　午前三時',
+  title: T('ch3.title'),
+  subtitle: T('ch3.subtitle'),
   time: 'night',
   spawn: 'spawn_bed',
   wakeUp: true,
   clock: { h: 3, m: 0, rate: 0.05 },
   ambience: 'room_tone',
-  gameOverReason: GAME_OVER,
+  gameOverReason: T('ch3.gameover'),
   setup(c) {
     current = wire(c);
   },

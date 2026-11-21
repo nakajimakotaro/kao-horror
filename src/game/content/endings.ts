@@ -1,71 +1,11 @@
+import { T, TL } from '../../script';
 import type { EndingDef } from './types';
 
-// Ending rolls transcribed verbatim from docs/SCENARIO.md §6 「エンディングロール」 (one line per entry, '' = blank line).
-// The in-game scenes before [ENDING:id] live in the chapter scripts.
+// エンディングの名前とロールは台本 script/endings.nani。エンディング直前の場面は script/ch5.nani。
+const ending = (id: string): EndingDef => ({ id, name: T(`endings.${id}.name`), label: T(`endings.${id}.label`), lines: TL(`endings.${id}`, undefined, true) });
+
 export const ENDINGS: Record<string, EndingDef> = {
-  end1_ohayou: {
-    id: 'end1_ohayou',
-    name: 'おはよう',
-    label: 'END1',
-    lines: [
-      '九月。透は、月見台クリニックに通いはじめた。',
-      '薬が合ったのか、夜中に目が覚めることは、なくなった。',
-      '冷蔵庫を開けても、もう何もいない。',
-      '十月のはじめ、なおから一通だけ、メッセージが届いた。',
-      '「最後に、ひとつだけ」',
-      '「あの動画、全部消したよ。消す前に、一枚だけ保存しちゃった」',
-      '（写真：ベッドで眠る透。ベッドの下の暗がりに、白い顔がひとつあって、こちらを見ている）',
-      // QA27: the photo shows the space under the bed; the point is that it could not have been in frame
-      '「ベッドの下なんて、映るはずないのに」',
-      '暗いところのノイズは、人の顔に見えやすいのだと、医者は言った。',
-      'そういうことにした。',
-      '',
-      '午前三時三分。',
-      'なお「起きてる？」',
-      '既読は、つかなかった。',
-      '透は、眠っている。',
-    ],
-  },
-  end2_omote: {
-    id: 'end2_omote',
-    name: 'おもて',
-    label: 'END2',
-    lines: [
-      '九月一日。夏休みが、終わった。',
-      '掲示板の張り紙が、一枚増えた。',
-      '「さがしています　瀬尾　透さん（25）」',
-      '「8月31日未明、月見町二丁目付近で見かけられたのを最後に……」',
-      '貼ったのは、なおだった。',
-      '「……また、間に合わなかった」',
-      '',
-      '次の春。コーポ月見103号室に、新しい住人が越してきた。',
-      '八月の終わりのある夜、彼は寝落ちから目を覚ます。',
-      '午前三時三分。電気がつかない。',
-      '冷蔵庫の扉が少しだけ開いて、庫内灯の光が、床に一本の線を引いている。',
-      '開けると、懐中電灯がある。',
-      'その奥に、白い顔がある。',
-      '目を閉じることのできない、二十五歳の男の顔が。',
-    ],
-  },
-  end3_nezunoban: {
-    id: 'end3_nezunoban',
-    name: 'ねずのばん',
-    label: 'END3',
-    lines: [
-      '八月三十一日。夏休みの、最後の日。',
-      '帰り道、なおは掲示板の前で立ち止まった。',
-      'しずくの張り紙を、自分の手で、はがした。',
-      // QA27: not a new 「さがしています」 poster — she lets Shizuku be mourned
-      '「お葬式、ちゃんとする。写真は、目をつぶって笑ってるやつにする」',
-      '「もう、見なくていいから」',
-      '九月から、透は病院に通っている。',
-      'なおは、ときどき昼に来る。夜には、来ない。',
-      'その夜から、透は夢を見なくなった。',
-      'ただ、懐中電灯だけは、なぜか今も冷蔵庫に入れている。',
-      '',
-      'なおは、あの留守番電話を一度も聞いていなかった。',
-      '眠る透に、聞かせられたはずがない。',
-      '誰にも、説明はつかない。',
-    ],
-  },
+  end1_ohayou: ending('end1_ohayou'),
+  end2_omote: ending('end2_omote'),
+  end3_nezunoban: ending('end3_nezunoban'),
 };

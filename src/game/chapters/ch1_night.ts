@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { SoundHandle } from '../../audio/AudioEngine';
 import type { ChapterDef } from '../Chapter';
+import { T } from '../../script';
 import type { Ctx } from '../Ctx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -85,8 +86,8 @@ function phoneScreen(c: Ctx, on: boolean): void {
 
 export const ch1_night: ChapterDef = {
   id: 'ch1_night',
-  title: '一日目',
-  subtitle: '八月二十九日　午前三時',
+  title: T('ch1.title'),
+  subtitle: T('ch1.subtitle'),
   time: 'night',
   spawn: 'spawn_bed',
   wakeUp: true,
@@ -95,7 +96,7 @@ export const ch1_night: ChapterDef = {
   money: 1500,
   // チェックポイントから再開したとき（懐中電灯を持っている）は点けた状態で始める
   flashlightOn: true,
-  gameOverReason: '暗がりの白い顔と、ふたつ数えるあいだ目が合ってしまった。',
+  gameOverReason: T('ch1.gameover'),
 
   setup(c) {
     mwMode = 'clock';
@@ -113,21 +114,21 @@ export const ch1_night: ChapterDef = {
     const gapCount = () => nonFridgeGaps() + (c.is('gap_fridge') ? 1 : 0);
     const objectiveText = (): string => {
       if (!c.is('got_flashlight')) {
-        if (c.is('ch1_fridge_opened')) return '目を閉じたまま、懐中電灯を取る';
-        if (c.is('drawer_checked')) return '光の漏れている冷蔵庫を確かめる';
-        if (c.is('tried_switch')) return '懐中電灯を探す（いつもはキッチンの引き出し）';
-        return '部屋の明かりをつける';
+        if (c.is('ch1_fridge_opened')) return T('ch1.obj_take_blind');
+        if (c.is('drawer_checked')) return T('ch1.obj_check_fridge');
+        if (c.is('tried_switch')) return T('ch1.obj_find_flashlight');
+        return T('ch1.obj_light');
       }
-      if (!c.is('tape_peeled')) return 'ブレーカーを確かめる（玄関の上の分電盤）';
+      if (!c.is('tape_peeled')) return T('ch1.obj_breaker');
       if (!c.is('power_on')) {
-        if (!c.is('water_found')) return '水の音を確かめる（浴室）';
-        if (c.is('faucet_off') && c.is('plug_out')) return '分電盤のブレーカーを上げる';
-        if (c.is('faucet_off')) return '洗濯機のまわりを確かめる';
-        return '浴槽の蛇口を閉める';
+        if (!c.is('water_found')) return T('ch1.obj_water');
+        if (c.is('faucet_off') && c.is('plug_out')) return T('ch1.obj_raise_breaker');
+        if (c.is('faucet_off')) return T('ch1.obj_washer');
+        return T('ch1.obj_faucet');
       }
-      if (!c.is('gap_phase')) return '冷蔵庫のメモを読む';
+      if (!c.is('gap_phase')) return T('ch1.obj_read_memo');
       const n = gapCount();
-      return n < 5 ? `寝る前に、あいているところを全部しめる（${n}/5）` : 'ベッドで眠る（さいごに　め）';
+      return n < 5 ? T('ch1.obj_gaps', { n }) : T('ch1.obj_sleep');
     };
     const refresh = () => {
       const t = objectiveText();
@@ -147,7 +148,7 @@ export const ch1_night: ChapterDef = {
       await fn();
       if (mine) c.releaseEyes();
     };
-    const monoEyes = (text: string | string[]) => keepEyes(() => c.mono(text));
+    const monoEyes = (key: string) => keepEyes(() => c.play(key));
 
     // ── 顔 ───────────────────────────────────────────────────────────────
     /** この章で最初に見た顔か（QA#5: どの顔であれ最初の一体で［顔から目をそらす］を教える） */
@@ -168,8 +169,8 @@ export const ch1_night: ChapterDef = {
           firstFace();
           c.sfx('face_appear', { at: 'anc_washer_inside' });
           // ヒントが先: 独白は目をそらすまで出ない
-          c.hint('顔から目をそらす');
-          c.run(() => monoEyes('……見るな。なぜか、そう思った'));
+          c.hint(T('ch1.hint_look_away'));
+          c.run(() => monoEyes('ch1.washer_face'));
         },
         onVanish: () => {
           if (c.alive) c.set('ch1_f11_gone');
@@ -206,7 +207,7 @@ export const ch1_night: ChapterDef = {
       const f = c.face('anc_bathtub', {
         type: 'peek',
         onSeen: () => {
-          if (firstFace()) c.hint('顔から目をそらす');
+          if (firstFace()) c.hint(T('ch1.hint_look_away'));
         },
       });
       const surface = tub.node('water_full')?.getWorldPosition(new THREE.Vector3()).y ?? 0.52;
@@ -224,8 +225,8 @@ export const ch1_night: ChapterDef = {
         lookAt: false,
         yaw: 180,
         onSeen: () => {
-          if (firstFace()) c.hint('顔から目をそらす');
-          c.run(() => monoEyes(['鏡の中――俺の肩の、うしろに', '……振り返っても、誰もいない']));
+          if (firstFace()) c.hint(T('ch1.hint_look_away'));
+          c.run(() => monoEyes('ch1.mirror_face'));
         },
       });
     };
@@ -252,8 +253,8 @@ export const ch1_night: ChapterDef = {
         type: 'peek',
         owner: null,
         onSeen: () => {
-          if (firstFace()) c.hint('顔から目をそらす');
-          c.run(() => monoEyes('クローゼットの隙間から、半分だけ――'));
+          if (firstFace()) c.hint(T('ch1.hint_look_away'));
+          c.run(() => monoEyes('ch1.closet_face'));
         },
       });
       // 右戸（CLOSET_GAP）が開けた隙間 x∈[0.72,0.85] の中央、戸のすぐ裏。正面から左右およそ25°以内で見える
@@ -300,8 +301,8 @@ export const ch1_night: ChapterDef = {
             onSeen: () => {
               c.set('ch1_f16_seen');
               c.sfx('face_appear', { at: 'anc_curve_mirror' });
-              if (firstFace()) c.hint('顔から目をそらす');
-              c.run(() => monoEyes(['カーブミラーの中――白い顔が、こっちを', '……見るな']));
+              if (firstFace()) c.hint(T('ch1.hint_look_away'));
+              c.run(() => monoEyes('ch1.curve_mirror_face'));
             },
           });
           while (f.alive) {
@@ -381,31 +382,31 @@ export const ch1_night: ChapterDef = {
       const sw = c.prop(id);
       c.sfx('switch_click', { at: id });
       void sw.animate(sw.isOpen() ? 0 : 1, undefined, 0.08);
-      await c.say('透', '……つかない');
+      await c.play('ch1.switch_dead');
       if (!c.is('tried_switch')) {
         // 漏電のあと（冷蔵庫も時計も止まっている）に初めて押したときは、最初の気づきは言わない（QA#2）
-        if (!c.is('power_tripped')) await c.mono(['停電？　……でも冷蔵庫は唸ってる。電子レンジの時計も光ってる', '照明だけ、死んでる']);
+        if (!c.is('power_tripped')) await c.play('ch1.switch_first');
         c.set('tried_switch');
         refresh();
       }
     };
-    c.on('apt_switch_room', { label: '電気のスイッチを押す', use: () => pressSwitch('apt_switch_room'), blind: false });
-    c.on('apt_switch_kitchen', { label: '電気のスイッチを押す', use: () => pressSwitch('apt_switch_kitchen'), blind: false });
+    c.on('apt_switch_room', { label: T('ch1.label_switch'), use: () => pressSwitch('apt_switch_room'), blind: false });
+    c.on('apt_switch_kitchen', { label: T('ch1.label_switch'), use: () => pressSwitch('apt_switch_kitchen'), blind: false });
 
     // 電子レンジ
     c.on('apt_microwave', {
-      label: '電子レンジの時計を見る',
+      label: T('ch1.label_microwave'),
       blind: false,
       use: async () => {
-        if (c.is('power_on')) await c.mono('時計が「0:00」で点滅してる。……一回、全部落ちたんだ');
-        else if (c.is('power_tripped')) await c.mono('真っ暗だ。時計も消えてる');
-        else await c.mono(`AM ${c.now.h}時。光ってる。……コンセントは生きてる`);
+        if (c.is('power_on')) await c.play('ch1.microwave_blink');
+        else if (c.is('power_tripped')) await c.play('ch1.microwave_off');
+        else await c.play('ch1.microwave_clock', { h: c.now.h });
       },
     });
 
     // キッチンの引き出し
     c.on('apt_kitchen_drawer', {
-      label: () => (c.is('drawer_checked') ? c.defaultLabel('apt_kitchen_drawer') : '引き出しを開ける'),
+      label: () => (c.is('drawer_checked') ? c.defaultLabel('apt_kitchen_drawer') : T('ch1.label_drawer')),
       blind: false,
       use: async () => {
         if (c.is('drawer_checked')) {
@@ -414,11 +415,11 @@ export const ch1_night: ChapterDef = {
         }
         c.sfx('drawer_open', { at: 'apt_kitchen_counter' });
         await c.prop('apt_kitchen_counter').animate(1, 'drawer', 0.35);
-        await c.mono(['……ない', 'いつもここに入れてるのに。単三電池が二本、転がってるだけだ']);
+        await c.play('ch1.drawer_empty');
         c.give('battery');
         c.set('drawer_checked');
         // 冷蔵庫をまだ開けていなければ、漏れている光に気づく（取ったあとなら言わない。QA#2）
-        if (!c.is('ch1_fridge_opened') && !c.is('got_flashlight')) await c.mono('……冷蔵庫の扉が、少しだけ開いてる。光が漏れてる');
+        if (!c.is('ch1_fridge_opened') && !c.is('got_flashlight')) await c.play('ch1.drawer_fridge_light');
         refresh();
       },
     });
@@ -434,17 +435,17 @@ export const ch1_night: ChapterDef = {
         c.light('apt_fridge_light').setOn(true);
         await p.animate(1, 'door', 0.55);
         await c.lookAt(p.toWorld([0.12, 0.87, 0.05]), 0.6);
-        await c.mono('麦茶と卵のあいだに――懐中電灯');
+        await c.play('ch1.fridge_flashlight');
         await c.wait(0.6);
         spawnFridgeFace();
         c.sfx('face_appear', { at: 'anc_fridge_inside' });
         await c.wait(0.8); // 反射閉眼まで0.8秒
         c.eyes(true); // 反射的に目をつぶる。次の2行のあいだ閉じたまま
         await c.wait(0.4);
-        await c.mono(['……いま、奥に', '見るな。目を、合わせるな']);
+        await c.play('ch1.fridge_face');
       });
       c.releaseEyes();
-      c.hint('[Space] 長押しで目を閉じる／閉じたまま [E] で取れる');
+      c.hint(T('ch1.hint_blind_take'));
       refresh();
     };
 
@@ -455,7 +456,7 @@ export const ch1_night: ChapterDef = {
       // 耳もとの息に身がすくむ。扉が閉まって顔が消えるまで目は閉じたまま（共通ルール3）
       c.eyes(true);
       c.sfx('breathing', { volume: 0.9 });
-      await c.mono('耳もとで、誰かが息をした');
+      await c.play('ch1.take_breath');
       c.sfx('fridge_close', { at: 'apt_fridge' });
       const closing = c.prop('apt_fridge').animate(0, 'door', 0.55);
       c.clearFace('anc_fridge_inside');
@@ -464,10 +465,10 @@ export const ch1_night: ChapterDef = {
       c.releaseEyes();
       await c.wait(1.0);
       // Space を押したままなら、閉じたまま独白を出す
-      await monoEyes(['……ぬるい', '冷蔵庫の中にあったのに。持ち手だけが、ぬるい。……さっきまで、誰かが握ってたみたいに']);
-      await keepEyes(() => c.say('透', '誰がここに懐中電灯置いたんだ…？ 誰かに中にはいられてる…？'));
+      await monoEyes('ch1.take_warm');
+      await keepEyes(() => c.play('ch1.take_who'));
       c.checkpoint('ch1_flashlight');
-      c.hint('[F] で懐中電灯をつける');
+      c.hint(T('ch1.hint_flashlight'));
       refresh();
     };
 
@@ -479,7 +480,7 @@ export const ch1_night: ChapterDef = {
       if (opening && fridgePowered()) c.light('apt_fridge_light').setOn(true);
       await p.animate(opening ? 1 : 0, 'door', 0.55);
       if (!opening) c.light('apt_fridge_light').setOn(false);
-      if (opening) await c.mono('……もう、いない。麦茶と卵と、缶ビール');
+      if (opening) await c.play('ch1.fridge_empty');
     };
 
     const readFridgeMemo = async () => {
@@ -491,7 +492,7 @@ export const ch1_night: ChapterDef = {
         c.light('apt_fridge_light').setOn(false);
       }
       await c.doc('doc_memo_fridge');
-      await c.mono(['……うちのメモ帳だ。字は、俺のじゃない', 'さいごに、め？']);
+      await c.play('ch1.memo_after');
       c.set('gap_phase'); // すでに閉じている箇所は gapCount() がそのまま数える
       refresh();
     };
@@ -504,7 +505,7 @@ export const ch1_night: ChapterDef = {
       c.sfx('knock', { at: 'apt_fridge' });
       await c.wait(0.4);
       c.sfx('knock', { at: 'apt_fridge' });
-      await monoEyes(['……内側から？', '氷が、落ちただけだ']);
+      await monoEyes('ch1.fridge_knock');
       c.set('gap_fridge');
       refresh();
     };
@@ -519,11 +520,11 @@ export const ch1_night: ChapterDef = {
     c.on('apt_fridge', {
       label: () => {
         const open = c.prop('apt_fridge').isOpen('door');
-        if (!c.is('got_flashlight')) return open ? '懐中電灯を取る' : '冷蔵庫を開ける';
-        if (!c.is('power_on')) return open ? '冷蔵庫を閉める' : '冷蔵庫を開ける';
-        if (!c.is('gap_phase')) return '冷蔵庫のメモを読む';
-        if (c.is('fridge_reopened') && !c.is('gap_fridge')) return '冷蔵庫を閉める';
-        return '冷蔵庫を開ける';
+        if (!c.is('got_flashlight')) return open ? T('ch1.label_take_flashlight') : T('ch1.label_open_fridge');
+        if (!c.is('power_on')) return open ? T('ch1.label_close_fridge') : T('ch1.label_open_fridge');
+        if (!c.is('gap_phase')) return T('ch1.label_read_memo');
+        if (c.is('fridge_reopened') && !c.is('gap_fridge')) return T('ch1.label_close_fridge');
+        return T('ch1.label_open_fridge');
       },
       // 目を閉じたまま使えるのは「懐中電灯を取る」と、すきまの「冷蔵庫を閉める」だけ
       get blind() {
@@ -549,7 +550,7 @@ export const ch1_night: ChapterDef = {
           await closeFridgeGap();
           return;
         }
-        await c.mono('今は、開けたくない');
+        await c.play('ch1.fridge_not_now');
       },
     });
 
@@ -562,7 +563,7 @@ export const ch1_night: ChapterDef = {
       c.breaker('sw_2', true);
       c.power(true);
       c.light('apt_light_kitchen').setOn(true);
-      await keepEyes(() => c.say('透', '……ついた'));
+      await keepEyes(() => c.play('ch1.peel_on'));
       await c.wait(2.5);
       // 浴槽からあふれた水が洗濯機の延長コードに届いていて、漏電でメインごと落ちる
       c.sfx('breaker', { at: 'apt_breaker' });
@@ -574,14 +575,14 @@ export const ch1_night: ChapterDef = {
       c.set('tape_peeled');
       c.set('power_tripped');
       await c.wait(1.0);
-      await monoEyes(['……落ちた。今度は、全部', '冷蔵庫の音も止まった。……静かすぎる']);
+      await monoEyes('ch1.trip_all');
       if (c.is('faucet_off')) {
         // 漏電の前に蛇口を閉めていた（QA#1）: もう水音はしない。床の水 → 洗濯機のまわりへ
-        await monoEyes(['……さっきの水だ', '浴室からあふれた水が、洗濯機のほうまで流れてる']);
+        await monoEyes('ch1.trip_after_faucet');
       } else {
         water?.setVolume(0.6, 1.5);
         await c.wait(1.4);
-        await monoEyes('――水の音？');
+        await monoEyes('ch1.trip_water');
       }
       tripSequenceDone = true;
       refresh();
@@ -593,7 +594,7 @@ export const ch1_night: ChapterDef = {
       await c.wait(0.3);
       c.sfx('breaker', { at: 'apt_breaker' });
       c.breaker('sw_main', false);
-      await monoEyes('上げても、すぐ落ちる。……どこかで漏電してる？');
+      await monoEyes('ch1.trip_again');
     };
 
     const restorePower = async () => {
@@ -608,10 +609,10 @@ export const ch1_night: ChapterDef = {
       // 顔F1-1 がまだ残っていれば、ここで消す
       c.clearFace('anc_washer_inside');
       c.set('ch1_f11_gone');
-      await monoEyes('……ついた。今度は、落ちない');
+      await monoEyes('ch1.restore_on');
       c.set('power_on');
       c.checkpoint('ch1_power');
-      await monoEyes('冷蔵庫の扉に、メモが貼ってある。さっきは暗くて気づかなかった');
+      await monoEyes('ch1.restore_memo');
       refresh();
     };
 
@@ -619,10 +620,10 @@ export const ch1_night: ChapterDef = {
       label: () => {
         // ふたが閉じている間は既定（「分電盤のフタを開ける」）
         if (!c.prop('apt_breaker').isOpen('cover')) return c.defaultLabel('apt_breaker');
-        if (!c.is('got_flashlight') || !c.is('saw_breaker')) return 'ブレーカーを調べる';
-        if (!c.is('tape_peeled')) return 'テープを剥がして、ブレーカーを上げる';
-        if (!c.is('power_on')) return 'ブレーカーを上げる';
-        return '分電盤を見る';
+        if (!c.is('got_flashlight') || !c.is('saw_breaker')) return T('ch1.label_breaker_check');
+        if (!c.is('tape_peeled')) return T('ch1.label_breaker_peel');
+        if (!c.is('power_on')) return T('ch1.label_breaker_raise');
+        return T('ch1.label_breaker_look');
       },
       blind: false,
       use: async () => {
@@ -632,13 +633,13 @@ export const ch1_night: ChapterDef = {
         }
         // 懐中電灯より先に全停電を起こさせない（QA#2）
         if (!c.is('got_flashlight')) {
-          await c.mono('暗くて、よく見えない');
+          await c.play('ch1.breaker_dark');
           return;
         }
         if (!c.is('saw_breaker')) {
-          await c.mono(['「照明」のブレーカーだけ、下がってる', '……テープで、留めてある']);
+          await c.play('ch1.breaker_taped');
           await c.doc('doc_memo_breaker');
-          await c.mono('俺の字じゃない');
+          await c.play('ch1.breaker_not_mine');
           c.set('saw_breaker');
           return;
         }
@@ -651,7 +652,7 @@ export const ch1_night: ChapterDef = {
           else await breakerTripsAgain();
           return;
         }
-        await c.mono('全部、上がってる');
+        await c.play('ch1.breaker_all_up');
       },
     });
 
@@ -665,12 +666,12 @@ export const ch1_night: ChapterDef = {
       c.clearFace('anc_bathtub');
       c.set('faucet_off');
       c.set('water_found');
-      if (c.is('power_tripped')) await monoEyes(['……止まった', '水が、浴室の外まで流れてる。洗濯機のほうへ']);
-      else await monoEyes('……止めた。床は水びたしだ');
+      if (c.is('power_tripped')) await monoEyes('ch1.faucet_tripped');
+      else await monoEyes('ch1.faucet_before');
       refresh();
     };
     c.on('apt_bathtub', {
-      label: () => (c.is('faucet_off') ? '浴槽を見る' : '蛇口を閉める'),
+      label: () => (c.is('faucet_off') ? T('ch1.label_look_tub') : T('ch1.label_close_faucet')),
       get blind() {
         return !c.is('faucet_off');
       },
@@ -679,13 +680,13 @@ export const ch1_night: ChapterDef = {
           await closeFaucet();
           return;
         }
-        await c.mono('あふれた水が、ゆっくり排水口に吸われていく');
+        await c.play('ch1.tub_draining');
       },
     });
 
     // シャワーカーテン（顔がいる間＝蛇口を閉めるまでは開け閉めさせない）
     c.on('apt_shower_curtain', {
-      label: () => (c.is('faucet_off') ? c.defaultLabel('apt_shower_curtain') : '蛇口を閉める'),
+      label: () => (c.is('faucet_off') ? c.defaultLabel('apt_shower_curtain') : T('ch1.label_close_faucet')),
       get blind() {
         return !c.is('faucet_off');
       },
@@ -702,15 +703,15 @@ export const ch1_night: ChapterDef = {
     const plugReady = () => c.is('power_tripped') && !c.is('plug_out') && (c.is('water_found') || c.is('faucet_off'));
     c.on('apt_washer', {
       label: () => {
-        if (plugReady()) return '洗濯機の裏のプラグを抜く';
-        if (c.prop('apt_washer').isOpen('lid') && c.is('ch1_f11_gone')) return '洗濯機のふたを閉める';
-        return '洗濯機を見る';
+        if (plugReady()) return T('ch1.label_pull_plug');
+        if (c.prop('apt_washer').isOpen('lid') && c.is('ch1_f11_gone')) return T('ch1.label_close_washer_lid');
+        return T('ch1.label_look_washer');
       },
       blind: false,
       use: async () => {
         if (plugReady()) {
           c.sfx('thud', { at: 'apt_washer' });
-          await c.mono(['延長コードのタップが、水たまりに浸かってた', '……これだ。漏電だ']);
+          await c.play('ch1.plug_found');
           c.set('plug_out');
           refresh();
           return;
@@ -720,13 +721,13 @@ export const ch1_night: ChapterDef = {
           c.set('ch1_washer_lid_closed');
           return;
         }
-        await c.mono('備え付けの、古い洗濯機だ');
+        await c.play('ch1.washer_old');
       },
     });
 
     // トイレ（ふたは開けてもよいが、開けたら gap_toilet を戻す）
     c.on('apt_toilet', {
-      label: () => (c.prop('apt_toilet').isOpen('lid') ? 'トイレのふたを閉める' : c.defaultLabel('apt_toilet')),
+      label: () => (c.prop('apt_toilet').isOpen('lid') ? T('ch1.label_close_toilet') : c.defaultLabel('apt_toilet')),
       get blind() {
         return c.prop('apt_toilet').isOpen('lid');
       },
@@ -743,7 +744,7 @@ export const ch1_night: ChapterDef = {
         await c.wait(0.6);
         await closing;
         c.sfx('water_drip', { at: 'apt_toilet' });
-        await monoEyes(['……ふたの中で、水が鳴った', '気のせいだ']);
+        await monoEyes('ch1.toilet_closed');
         c.set('gap_toilet');
         refresh();
       },
@@ -753,7 +754,7 @@ export const ch1_night: ChapterDef = {
     c.on('apt_bath_mirror', {
       label: () => {
         if (c.is('gap_mirror')) return null;
-        if (c.is('gap_phase')) return '鏡にタオルをかける';
+        if (c.is('gap_phase')) return T('ch1.label_towel_mirror');
         return c.defaultLabel('apt_bath_mirror');
       },
       get blind() {
@@ -769,9 +770,9 @@ export const ch1_night: ChapterDef = {
         c.clearFace('anc_mirror');
         await c.wait(0.8);
         c.sfx('whisper_futatsu', { at: 'anc_mirror' });
-        c.sub('？？？', '……ふたつ', 2.2);
+        c.subLine('ch1.sub_futatsu', 2.2);
         await c.wait(2.4);
-        await monoEyes('……今、何か言った？');
+        await monoEyes('ch1.mirror_said');
         c.set('gap_mirror');
         refresh();
       },
@@ -779,13 +780,13 @@ export const ch1_night: ChapterDef = {
 
     // クローゼット（この章では開けさせない。中になおがいる）
     c.on('apt_closet', {
-      label: () => (c.is('gap_closet') ? 'クローゼット' : 'クローゼットを閉める'),
+      label: () => (c.is('gap_closet') ? T('ch1.label_closet') : T('ch1.label_close_closet')),
       get blind() {
         return !c.is('gap_closet');
       },
       use: async () => {
         if (c.is('gap_closet')) {
-          await c.mono('……開ける気には、なれない');
+          await c.play('ch1.closet_not_open');
           return;
         }
         c.sfx('slide_close', { at: 'apt_closet' });
@@ -794,7 +795,7 @@ export const ch1_night: ChapterDef = {
         await closing;
         await c.wait(0.7);
         c.sfx('thud', { at: 'apt_closet' });
-        await monoEyes(['……中で、何か落ちた', '服だ。ハンガーから落ちただけだ']);
+        await monoEyes('ch1.closet_closed');
         c.set('gap_closet');
         refresh();
       },
@@ -802,11 +803,11 @@ export const ch1_night: ChapterDef = {
 
     // カーテン（窓はこの章ではラベルなし）
     c.on('apt_curtain', {
-      label: () => (c.is('gap_curtain') ? 'カーテン' : 'カーテンを閉める'),
+      label: () => (c.is('gap_curtain') ? T('ch1.label_curtain') : T('ch1.label_close_curtain')),
       blind: false,
       use: async () => {
         if (c.is('gap_curtain')) {
-          await c.mono('開ける気には、なれない');
+          await c.play('ch1.curtain_not_open');
           return;
         }
         c.sfx('curtain', { at: 'apt_curtain' });
@@ -815,7 +816,7 @@ export const ch1_night: ChapterDef = {
         c.sfx('window_tap', { at: 'anc_window_outside' });
         await c.wait(0.3);
         c.sfx('window_tap', { at: 'anc_window_outside' });
-        await monoEyes(['……ガラスを、叩いた？', '風だ。……風だ']);
+        await monoEyes('ch1.curtain_closed');
         c.set('gap_curtain');
         refresh();
       },
@@ -824,48 +825,48 @@ export const ch1_night: ChapterDef = {
 
     // ベッド
     c.on('apt_bed', {
-      label: () => (c.is('gap_phase') && gapCount() >= 5 ? '横になる' : 'ベッド'),
+      label: () => (c.is('gap_phase') && gapCount() >= 5 ? T('ch1.label_lie_down') : T('ch1.label_bed')),
       blind: false,
       use: async () => {
         if (!c.is('gap_phase')) {
-          await c.mono('今は、眠れない');
+          await c.play('ch1.bed_not_now');
           return;
         }
         if (gapCount() < 5) {
-          await c.mono('まだ眠れない。……メモの「しめる」が、終わってない');
+          await c.play('ch1.bed_not_done');
           return;
         }
         // 第2章の玄関の独白用（QA24）: 自分でチェーンを外したまま寝たなら、朝に外れていても不思議はない
         c.set('ch1_chain_at_bed', c.isLocked('apt_door_chain'));
         await c.lieAwake({ yaw: 70 });
         sleeping = true;
-        await c.mono(['さいごに、め', '……目を、閉じる']);
-        c.hint('[Space] 長押しで目を閉じる。……閉じ続けると、眠ってしまう');
+        await c.play('ch1.bed_sleep');
+        c.hint(T('ch1.hint_sleep'));
         // 目を8秒閉じ続けたら onBlackout で次の章へ
       },
     });
 
     // スマホ
     c.on('apt_phone', {
-      label: () => (c.is('power_on') && !c.is('ch1_phone_charged') ? 'スマホを充電する' : c.defaultLabel('apt_phone')),
+      label: () => (c.is('power_on') && !c.is('ch1_phone_charged') ? T('ch1.label_charge_phone') : c.defaultLabel('apt_phone')),
       blind: false,
       use: async () => {
         if (!c.is('power_on')) {
-          await c.mono('電池が切れてる');
+          await c.play('ch1.phone_no_battery');
           return;
         }
         if (!c.is('ch1_phone_charged')) {
           c.set('ch1_phone_charged');
-          await c.mono('ケーブルをさした。……すぐには、つかない');
+          await c.play('ch1.phone_charge');
           return;
         }
-        await c.mono('……すぐには、つかない');
+        await c.play('ch1.phone_not_yet');
       },
     });
 
     // その他（この章で意味のあるもの）
-    c.on('apt_tv', { label: () => c.defaultLabel('apt_tv'), blind: false, use: () => c.mono('テレビ。……今は、いい') });
-    const notNow = () => c.mono('今は、それどころじゃない');
+    c.on('apt_tv', { label: () => c.defaultLabel('apt_tv'), blind: false, use: () => c.play('ch1.tv_not_now') });
+    const notNow = () => c.play('ch1.not_now');
     c.on('apt_calendar', { label: () => c.defaultLabel('apt_calendar'), blind: false, use: notNow });
     c.on('apt_desk', { label: () => c.defaultLabel('apt_desk'), blind: false, use: notNow });
     c.on('apt_notebook', { label: () => c.defaultLabel('apt_notebook'), blind: false, use: notNow });
@@ -878,19 +879,19 @@ export const ch1_night: ChapterDef = {
       use: async () => {
         const opening = !c.prop('apt_shoebox').isOpen('door_l');
         await c.useDefault('apt_shoebox');
-        if (opening) await c.mono('靴箱。……懐中電灯は、ない');
+        if (opening) await c.play('ch1.shoebox');
       },
     });
     // apt_door は既定（覗き穴・鍵・チェーン・開ける）。外へ出るのは任意
-    c.on('ext_board', { label: () => c.defaultLabel('ext_board'), blind: false, use: () => c.mono('暗くて、張り紙の字が読めない') });
-    c.on('ext_mailbox', { label: () => c.defaultLabel('ext_mailbox'), blind: false, use: () => c.mono('103のポストは、チラシでいっぱいだ') });
+    c.on('ext_board', { label: () => c.defaultLabel('ext_board'), blind: false, use: () => c.play('ch1.board_dark') });
+    c.on('ext_mailbox', { label: () => c.defaultLabel('ext_mailbox'), blind: false, use: () => c.play('ch1.mailbox') });
     // ext_vending は既定（自販機の店）
 
     // 夜のコンビニ（任意）: 入ると坂口があいさつ。以降、話しかけると店
     const greetClerk = async () => {
       if (c.is('ch1_clerk_met')) return;
       c.set('ch1_clerk_met');
-      await keepEyes(() => c.say('坂口', 'いらっしゃいませー。……深夜はレジ、俺ひとりなんで'));
+      await keepEyes(() => c.play('ch1.clerk_greet'));
     };
     const talkClerk = async () => {
       if (!c.is('ch1_clerk_met')) {
@@ -900,7 +901,7 @@ export const ch1_night: ChapterDef = {
       await c.shop('conbini');
     };
     c.npc('npc_clerk', { at: 'npc_clerk_spot', talk: talkClerk });
-    c.on('conbini_counter', { label: '店員に話しかける', blind: false, use: talkClerk });
+    c.on('conbini_counter', { label: T('ch1.label_clerk'), blind: false, use: talkClerk });
 
     // ── 場所トリガー ───────────────────────────────────────────────────────
     c.zone('zone_apt', {
@@ -939,17 +940,17 @@ export const ch1_night: ChapterDef = {
         c.set('went_out_ch1'); // 自分でチェーンを外して外へ出た（第2章の玄関の台詞の分岐用。QA#24）
         c.ambience('night_out');
         // 電気が戻ったあとに初めて出たときは「うちだけ停電」の気づきは言わない
-        if (!c.is('power_on')) await monoEyes(['外廊下の蛍光灯は、ついてる', '停電じゃない。……うちだけだ']);
+        if (!c.is('power_on')) await monoEyes('ch1.corridor_lit');
         c.sfx('footsteps_outside', { at: 'anc_stairs' });
         await c.wait(0.6);
-        await monoEyes('遠くで、足音');
+        await monoEyes('ch1.corridor_steps');
       },
     });
     c.zone('zone_street', {
       enter: async () => {
         if (c.is('got_flashlight') || c.is('ch1_street_done')) return;
         c.set('ch1_street_done');
-        await monoEyes(['自販機の光だけが、白い', '……戻ろう。懐中電灯もないのに']);
+        await monoEyes('ch1.street_back');
       },
     });
     armCurveMirror();
@@ -959,9 +960,9 @@ export const ch1_night: ChapterDef = {
       () => tripSequenceDone && c.is('power_tripped') && !c.is('water_found') && !c.is('faucet_off') && c.inZone('zone_apt_bath'),
       async () => {
         c.sfx('water_drip', { at: 'anc_bathtub' });
-        await monoEyes(['床が、びしょびしょだ。浴槽からあふれてる', 'カーテンの隙間から――']);
+        await monoEyes('ch1.tub_found');
         spawnTubFace();
-        await monoEyes('水面に、白い顔が、半分');
+        await monoEyes('ch1.tub_face');
         c.set('water_found');
         refresh();
       },
@@ -978,7 +979,7 @@ export const ch1_night: ChapterDef = {
         void c.prop('apt_fridge').animate(0.12, 'door', 0.5);
         c.light('apt_fridge_light').setOn(true);
         c.set('fridge_reopened');
-        await monoEyes(['……今、キッチンで音がした', '冷蔵庫が、また開いてる']);
+        await monoEyes('ch1.fridge_reopened');
         refresh();
       },
     );
@@ -991,7 +992,7 @@ export const ch1_night: ChapterDef = {
           c.run(async () => {
             c.eyes(true);
             c.sfx('whisper_oyasumi', { volume: 0.55 });
-            c.sub('？？？', '……おやすみ', 2.6);
+            c.subLine('ch1.sub_oyasumi', 2.6);
             await c.wait(2.8);
             await c.fadeOut(1.8);
             await c.goto('ch2_day');
@@ -1002,7 +1003,7 @@ export const ch1_night: ChapterDef = {
       // ベッド以外は既定（はっと目覚める）。この章で初めてのときだけヒント
       if (!c.is('ch1_blackout_hint')) {
         c.set('ch1_blackout_hint');
-        c.hint('目を閉じ続けると、眠ってしまう');
+        c.hint(T('ch1.hint_blackout'));
       }
       return false;
     });
@@ -1016,19 +1017,19 @@ export const ch1_night: ChapterDef = {
       const g = c.game;
       // まぶたが開いた（まだ寝姿勢の）ところから
       for (let i = 0; i < 400 && !(g.eyes.lid < 0 && g.player.override); i++) await c.wait(0.05);
-      await c.mono(['机で寝落ちしたはずだった', '目が覚めたのは、ベッドの上だった']);
+      await c.play('ch1.wake');
       for (let i = 0; i < 400 && g.player.override; i++) await c.wait(0.05);
       await c.cutscene(async () => {
         c.sfx('phone_vibrate', { at: 'apt_phone' });
         phoneScreen(c, true);
         await c.lookAt(c.prop('apt_phone').position, 0.9);
-        await c.mono('ローテーブルのスマホが光った。なおから。『起きてる？』');
+        await c.play('ch1.phone_lit');
         phoneScreen(c, false);
         await c.wait(0.4);
-        await c.mono('返そうと手を伸ばしたところで、画面が消えた。……電池切れだ');
+        await c.play('ch1.phone_dead');
       });
       refresh();
-      c.hint('[WASD] 移動　[マウス] 見回す　[E] 調べる');
+      c.hint(T('ch1.hint_move'));
     });
   },
 

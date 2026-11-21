@@ -24,6 +24,7 @@ import { Flashlight } from './Flashlight';
 import { Interaction } from './Interaction';
 import { loadSettings, saveSettings, type Settings } from './Settings';
 import { GameState, type Snapshot } from './State';
+import { T } from '../script';
 
 const DEG = Math.PI / 180;
 
@@ -119,7 +120,7 @@ export class Game {
     };
     this.input.onFreeLook = () => {
       this.ui.setResumeHint(false);
-      this.ui.toast('マウスをドラッグして見回す（E で調べる・Esc でポーズ）');
+      this.ui.toast(T('system.toast_controls'));
     };
     canvas.addEventListener('click', () => {
       if (this.mode === 'play') this.input.requestLock();
@@ -313,7 +314,7 @@ export class Game {
     this.state.flags._clock = `${this.clockState.h}:${this.clockState.m}:${this.clockState.rate}`;
     this.cp = this.state.snapshot();
     this.state.save(this.cp);
-    this.ui.toast('（チェックポイント）');
+    this.ui.toast(T('system.toast_checkpoint'));
   }
 
   /** Run an async script; Aborted errors are expected when chapters change. */
@@ -460,8 +461,8 @@ export class Game {
         const s = shop.items.find((x) => x.item === itemId)!;
         const key = `${id}:${itemId}`;
         const bought = this.runtime.shopBought[key] ?? 0;
-        if (s.limit !== undefined && bought >= s.limit) return 'もう買えない。';
-        if (this.state.money < s.price) { this.audio.play('ui_deny'); return 'お金が足りない。'; }
+        if (s.limit !== undefined && bought >= s.limit) return T('system.shop_sold_out');
+        if (this.state.money < s.price) { this.audio.play('ui_deny'); return T('system.shop_no_money'); }
         this.state.money -= s.price;
         this.state.give(itemId);
         if (itemId === 'flashlight') this.flashlight.owned = true;
@@ -469,7 +470,7 @@ export class Game {
         this.state.flags[`bought_${itemId}`] = (Number(this.state.flags[`bought_${itemId}`]) || 0) + 1;
         this.audio.play('register');
         this.ui.setMoney(this.state.money);
-        return `${ITEMS[itemId]?.name ?? itemId} を買った。`;
+        return T('system.shop_bought', { item: ITEMS[itemId]?.name ?? itemId });
       },
     }));
   }
@@ -477,9 +478,9 @@ export class Game {
   private openInventory(): void {
     const entries: ListEntry[] = Object.entries(this.state.inv)
       .filter(([id, n]) => n > 0 && ITEMS[id])
-      .map(([id, n]) => ({ id, name: ITEMS[id].name, desc: ITEMS[id].desc + (id === 'flashlight' ? `\n電池残量：${Math.round(this.state.battery * 100)}%` : ''), count: n, icon: ITEMS[id].icon }));
+      .map(([id, n]) => ({ id, name: ITEMS[id].name, desc: ITEMS[id].desc + (id === 'flashlight' ? '\n' + T('system.inventory_battery', { pct: Math.round(this.state.battery * 100) }) : ''), count: n, icon: ITEMS[id].icon }));
     this.audio.play('ui_open', { volume: 0.5 });
-    void this.dialogue(() => this.ui.openList('inventory', `持ち物　　所持金 ¥${this.state.money.toLocaleString()}`, entries));
+    void this.dialogue(() => this.ui.openList('inventory', T('system.inventory_title', { money: this.state.money.toLocaleString() }), entries));
   }
 
   // ── peephole / bed animations ────────────────────────────────────────────
@@ -698,7 +699,7 @@ export class Game {
       this.flash('#ffffff', 0.7);
       this.player.shake = 1;
       this.faces.remove(f);
-      this.ui.toast('お守りが砕けた。');
+      this.ui.toast(T('system.toast_omamori_broken'));
       this.faces.releaseLock();
       f.gaze = 0;
       return;
@@ -733,7 +734,7 @@ export class Game {
     this.fade.v = 0.75;
     this.ui.showGameOver({
       title: META.gameOverTitle,
-      reason: reason ?? 'あなたは、それと目を合わせてしまった。',
+      reason: reason ?? T('system.gameover_reason'),
       hint: META.gameOverHint,
       onRetry: () => void this.retry(),
       onTitle: () => this.showTitle(),
@@ -920,11 +921,11 @@ export class Game {
       }
       if (this.input.pressed('flashlight')) {
         const msg = this.flashlight.toggle(this.state.battery);
-        if (msg === '電池が切れている。' && this.state.has('battery')) {
+        if (msg === T('system.flashlight_empty') && this.state.has('battery')) {
           this.state.take('battery');
           this.state.battery = 1;
           this.audio.play('battery_swap');
-          this.ui.toast('電池を交換した。');
+          this.ui.toast(T('system.toast_battery_swapped'));
           this.flashlight.on = true;
         } else if (msg) this.ui.toast(msg);
         if (this.flashlight.owned) this.audio.play('flashlight_click', { volume: 0.6 });
@@ -963,7 +964,7 @@ export class Game {
       this.state.battery = 1;
       this.flashlight.on = true;
       this.audio.play('battery_swap');
-      this.ui.toast('電池を交換した。');
+      this.ui.toast(T('system.toast_battery_swapped'));
     }
     this.ui.setBattery(this.flashlight.owned ? this.state.battery : null, this.flashlight.on);
     this.ui.setMoney(this.chapter?.time === 'day' || this.world.inZone('zone_conbini_in', this.player.pos) ? this.state.money : null);
@@ -1036,7 +1037,7 @@ export class Game {
     this.player.shake = 0.6;
     await this.wait(0.4);
     this.eyes.force = null;
-    this.ui.toast('……眠りかけていた。');
+    this.ui.toast(T('system.toast_nearly_asleep'));
   }
 
   /** Drop all fear feedback at once (heartbeat, ringing, distortion). */

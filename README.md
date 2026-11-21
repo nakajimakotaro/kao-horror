@@ -53,8 +53,9 @@ npm run upload      # ビルドして itch.io（nakajimakotaro/nezunoban の htm
 | `src/core/` | 描画（低解像度＋レトロなポストエフェクト）・入力・移動・当たり判定 |
 | `src/world/` | 町の配置データ `layout.ts`、モデル仕様 `catalog.json`、照明・空・テクスチャ |
 | `src/game/` | ゲーム進行・章スクリプトAPI（`Ctx.ts`）・「顔」・懐中電灯・セーブ |
-| `src/game/chapters/` | 5つの章のスクリプト |
-| `src/game/content/` | 文書・アイテム・店・エンディング・タイトル |
+| `script/` | **台本**（台詞・文書・エンディング・アイテム名などゲームに出る文章すべて）。シナリオライターはここだけ触ればよい。書き方は `script/README.md` |
+| `src/game/chapters/` | 5つの章のスクリプト（進行のロジック。文章は `script/` から引く） |
+| `src/game/content/` | 文書・アイテム・店・エンディング・タイトルの定義（id・値段など。文章は `script/`） |
 | `src/audio/` | 数式で合成する効果音ライブラリ |
 | `tools/blender/` | 3Dモデル生成スクリプト（Blender Python） |
 

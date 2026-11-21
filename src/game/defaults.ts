@@ -2,12 +2,15 @@ import type { Ctx } from './Ctx';
 import type { InteractDef } from './Interaction';
 import { DOCS } from './content/docs';
 import { SHOPS } from './content/shops';
+import { T } from '../script';
 
+// 文言は台本 script/common.nani。
 // World default interactions. Chapters override any of these with c.on(id, …)
 // and can still call c.useDefault(id) to reuse the mechanical part (opening
 // a door, flipping a switch…).
 
-const look = (c: Ctx, label: string, text: string | string[]): InteractDef => ({ label, use: () => c.mono(text) });
+/** 見るだけの物: label = 表示する文字列、key = 調べたときの台本のブロック */
+const look = (c: Ctx, label: string, key: string): InteractDef => ({ label, use: () => c.play(key) });
 
 function toggler(c: Ctx, propId: string, part: string | undefined, names: [string, string], sounds: [string, string] = ['door_open', 'door_close'], sec = 0.6): InteractDef {
   return {
@@ -23,13 +26,13 @@ function toggler(c: Ctx, propId: string, part: string | undefined, names: [strin
 
 function lightSwitch(c: Ctx, propId: string, lightId: string): InteractDef {
   return {
-    label: '電気のスイッチを押す',
+    label: T('common.switch.label'),
     use: async () => {
       const sw = c.prop(propId);
       c.sfx('switch_click', { at: propId });
       void sw.animate(sw.isOpen() ? 0 : 1, undefined, 0.08);
       if (!c.hasPower) {
-        await c.mono('カチッ……。つかない。');
+        await c.play('common.switch.no_power');
         return;
       }
       const l = c.light(lightId);
@@ -43,7 +46,7 @@ export function buildDefaults(c: Ctx, id: string): InteractDef | null {
     // ── apartment ──
     case 'apt_fridge':
       return {
-        label: () => (c.prop('apt_fridge').isOpen('door') ? '冷蔵庫を閉める' : '冷蔵庫を開ける'),
+        label: () => (c.prop('apt_fridge').isOpen('door') ? T('common.apt_fridge.label_close') : T('common.apt_fridge.label_open')),
         use: async () => {
           const p = c.prop('apt_fridge');
           const opening = !p.isOpen('door');
@@ -54,14 +57,14 @@ export function buildDefaults(c: Ctx, id: string): InteractDef | null {
         },
       };
     case 'apt_microwave':
-      return { label: '電子レンジを見る', use: () => c.mono('電子レンジの時計が光っている。……こんな時間か。') };
+      return { label: T('common.apt_microwave.label'), use: () => c.play('common.apt_microwave') };
     case 'apt_kitchen_drawer':
-      return toggler(c, 'apt_kitchen_counter', 'drawer', ['引き出しを開ける', '引き出しを閉める'], ['drawer_open', 'drawer_close'], 0.35);
+      return toggler(c, 'apt_kitchen_counter', 'drawer', [T('common.apt_kitchen_drawer.label_open'), T('common.apt_kitchen_drawer.label_close')], ['drawer_open', 'drawer_close'], 0.35);
     case 'apt_washer':
-      return toggler(c, 'apt_washer', 'lid', ['洗濯機のふたを開ける', 'ふたを閉める'], ['lid_open', 'lid_close'], 0.5);
+      return toggler(c, 'apt_washer', 'lid', [T('common.apt_washer.label_open'), T('common.apt_washer.label_close')], ['lid_open', 'lid_close'], 0.5);
     case 'apt_shoebox':
       return {
-        label: () => (c.prop('apt_shoebox').isOpen('door_l') ? '靴箱を閉める' : '靴箱を開ける'),
+        label: () => (c.prop('apt_shoebox').isOpen('door_l') ? T('common.apt_shoebox.label_close') : T('common.apt_shoebox.label_open')),
         use: async () => {
           const p = c.prop('apt_shoebox');
           const o = !p.isOpen('door_l');
@@ -71,7 +74,7 @@ export function buildDefaults(c: Ctx, id: string): InteractDef | null {
       };
     case 'apt_breaker':
       return {
-        label: () => (c.prop('apt_breaker').isOpen('cover') ? 'ブレーカーを調べる' : '分電盤のフタを開ける'),
+        label: () => (c.prop('apt_breaker').isOpen('cover') ? T('common.apt_breaker.label_check') : T('common.apt_breaker.label_open')),
         use: async () => {
           const p = c.prop('apt_breaker');
           if (!p.isOpen('cover')) {
@@ -79,7 +82,7 @@ export function buildDefaults(c: Ctx, id: string): InteractDef | null {
             await p.open('cover', 0.4);
             return;
           }
-          await c.mono(c.hasPower ? 'ブレーカーは全部上がっている。' : 'ブレーカーが落ちている……？');
+          await c.play(c.hasPower ? 'common.apt_breaker.all_up' : 'common.apt_breaker.tripped');
         },
       };
     case 'apt_switch_kitchen':
@@ -88,7 +91,7 @@ export function buildDefaults(c: Ctx, id: string): InteractDef | null {
       return lightSwitch(c, 'apt_switch_room', 'apt_light_room');
     case 'apt_door':
       return {
-        label: () => (c.prop('apt_door').isOpen() ? 'ドアを閉める' : '玄関のドア'),
+        label: () => (c.prop('apt_door').isOpen() ? T('common.apt_door.label_close') : T('common.apt_door.label')),
         use: async () => {
           const door = c.prop('apt_door');
           if (door.isOpen()) {
@@ -98,7 +101,7 @@ export function buildDefaults(c: Ctx, id: string): InteractDef | null {
           }
           const locked = c.isLocked('apt_door');
           const chain = c.isLocked('apt_door_chain');
-          const opts = ['覗き穴を見る', locked ? '鍵を開ける' : '鍵をかける', chain ? 'チェーンを外す' : 'チェーンをかける', 'ドアを開ける', 'やめる'];
+          const opts = [T('common.apt_door.choice_peephole'), locked ? T('common.apt_door.choice_unlock') : T('common.apt_door.choice_lock'), chain ? T('common.apt_door.choice_unchain') : T('common.apt_door.choice_chain'), T('common.apt_door.choice_open'), T('common.apt_door.choice_cancel')];
           const i = await c.choice(opts);
           if (i === 0) await c.peephole();
           else if (i === 1) { c.sfx('door_lock', { at: 'apt_door' }); c.lock('apt_door', !locked); }
@@ -108,21 +111,21 @@ export function buildDefaults(c: Ctx, id: string): InteractDef | null {
             door.showNode('chain_hooked', !chain);
             door.showNode('chain_hanging', chain);
           } else if (i === 3) {
-            if (locked) await c.mono('鍵がかかっている。');
-            else if (chain) { c.sfx('chain_rattle', { at: 'apt_door' }); await c.mono('チェーンがかかっていて開かない。'); }
+            if (locked) await c.play('common.apt_door.locked');
+            else if (chain) { c.sfx('chain_rattle', { at: 'apt_door' }); await c.play('common.apt_door.chained'); }
             else { c.sfx('door_open', { at: 'apt_door' }); await door.open('leaf', 0.9); }
           }
         },
       };
     case 'apt_bath_door':
-      return toggler(c, 'apt_bath_door', 'leaf', ['ユニットバスの扉を開ける', '扉を閉める']);
+      return toggler(c, 'apt_bath_door', 'leaf', [T('common.apt_bath_door.label_open'), T('common.apt_bath_door.label_close')]);
     case 'apt_room_door':
-      return toggler(c, 'apt_room_door', 'panel', ['引き戸を開ける', '引き戸を閉める'], ['slide_open', 'slide_close'], 0.5);
+      return toggler(c, 'apt_room_door', 'panel', [T('common.apt_room_door.label_open'), T('common.apt_room_door.label_close')], ['slide_open', 'slide_close'], 0.5);
     case 'apt_window':
       return {
-        label: () => (c.prop('apt_window').isOpen('pane_r') ? '窓を閉める' : '窓を開ける'),
+        label: () => (c.prop('apt_window').isOpen('pane_r') ? T('common.apt_window.label_close') : T('common.apt_window.label_open')),
         use: async () => {
-          if (!c.prop('apt_curtain').isOpen('curtain_l')) { await c.mono('カーテンが閉まっている。'); return; }
+          if (!c.prop('apt_curtain').isOpen('curtain_l')) { await c.play('common.apt_window.curtain_closed'); return; }
           const p = c.prop('apt_window');
           const o = !p.isOpen('pane_r');
           c.sfx(o ? 'window_open' : 'window_close', { at: 'apt_window' });
@@ -131,7 +134,7 @@ export function buildDefaults(c: Ctx, id: string): InteractDef | null {
       };
     case 'apt_curtain':
       return {
-        label: () => (c.prop('apt_curtain').isOpen('curtain_l') ? 'カーテンを閉める' : 'カーテンを開ける'),
+        label: () => (c.prop('apt_curtain').isOpen('curtain_l') ? T('common.apt_curtain.label_close') : T('common.apt_curtain.label_open')),
         use: async () => {
           const p = c.prop('apt_curtain');
           const o = !p.isOpen('curtain_l');
@@ -140,18 +143,18 @@ export function buildDefaults(c: Ctx, id: string): InteractDef | null {
         },
       };
     case 'apt_toilet':
-      return toggler(c, 'apt_toilet', 'lid', ['トイレのふたを開ける', 'ふたを閉める'], ['lid_open', 'lid_close'], 0.5);
+      return toggler(c, 'apt_toilet', 'lid', [T('common.apt_toilet.label_open'), T('common.apt_toilet.label_close')], ['lid_open', 'lid_close'], 0.5);
     case 'apt_bath_mirror':
-      return look(c, '鏡を見る', '鏡に映った自分の顔。……ひどい顔だ。');
+      return look(c, T('common.apt_bath_mirror.label'), 'common.apt_bath_mirror');
     case 'apt_bathtub':
-      return look(c, '浴槽を見る', '空っぽの浴槽。乾いている。');
+      return look(c, T('common.apt_bathtub.label'), 'common.apt_bathtub');
     case 'apt_shower_curtain':
-      return toggler(c, 'apt_shower_curtain', 'curtain', ['シャワーカーテンを開ける', 'シャワーカーテンを閉める'], ['curtain', 'curtain'], 0.6);
+      return toggler(c, 'apt_shower_curtain', 'curtain', [T('common.apt_shower_curtain.label_open'), T('common.apt_shower_curtain.label_close')], ['curtain', 'curtain'], 0.6);
     case 'apt_desk':
-      return toggler(c, 'apt_desk', 'drawer', ['机の引き出しを開ける', '引き出しを閉める'], ['drawer_open', 'drawer_close'], 0.35);
+      return toggler(c, 'apt_desk', 'drawer', [T('common.apt_desk.label_open'), T('common.apt_desk.label_close')], ['drawer_open', 'drawer_close'], 0.35);
     case 'apt_tv':
       return {
-        label: 'テレビをつける／消す',
+        label: T('common.apt_tv.label'),
         use: async () => {
           const on = c.game.world.light('apt_tv_light').on;
           c.sfx('tv_on', { at: 'apt_tv' });
@@ -159,92 +162,92 @@ export function buildDefaults(c: Ctx, id: string): InteractDef | null {
         },
       };
     case 'apt_lowtable':
-      return look(c, 'テーブルを見る', '飲みかけの缶チューハイと、リモコン。');
+      return look(c, T('common.apt_lowtable.label'), 'common.apt_lowtable');
     case 'apt_phone':
-      return look(c, 'スマホを見る', 'スマホ。……画面がつかない。充電が切れている。');
+      return look(c, T('common.apt_phone.label'), 'common.apt_phone');
     case 'apt_bed':
-      return look(c, 'ベッド', '今は、眠れない。');
+      return look(c, T('common.apt_bed.label'), 'common.apt_bed');
     case 'apt_closet':
-      return toggler(c, 'apt_closet', 'door_r', ['クローゼットを開ける', 'クローゼットを閉める'], ['slide_open', 'slide_close'], 0.6);
+      return toggler(c, 'apt_closet', 'door_r', [T('common.apt_closet.label_open'), T('common.apt_closet.label_close')], ['slide_open', 'slide_close'], 0.6);
     case 'apt_photo':
-      return look(c, '写真立てを見る', '写真立て。');
+      return look(c, T('common.apt_photo.label'), 'common.apt_photo');
     case 'apt_trash':
-      return look(c, 'ゴミ箱を見る', '丸めたレシートやティッシュが入っている。');
+      return look(c, T('common.apt_trash.label'), 'common.apt_trash');
     case 'apt_calendar':
-      return look(c, 'カレンダーを見る', '八月のカレンダー。');
+      return look(c, T('common.apt_calendar.label'), 'common.apt_calendar');
     case 'apt_ac':
-      return look(c, 'エアコンを見る', 'エアコン。……止まっている。');
+      return look(c, T('common.apt_ac.label'), 'common.apt_ac');
     case 'apt_medicine':
-      return look(c, '薬の袋を見る', '薬の袋だ。');
+      return look(c, T('common.apt_medicine.label'), 'common.apt_medicine');
     case 'apt_notebook':
-      return look(c, 'ノートを見る', 'ノートだ。');
+      return look(c, T('common.apt_notebook.label'), 'common.apt_notebook');
     case 'apt_ac_outdoor':
-      return look(c, '室外機を見る', 'エアコンの室外機。');
+      return look(c, T('common.apt_ac_outdoor.label'), 'common.apt_ac_outdoor');
     // ── outside ──
     case 'ext_mailbox':
-      return look(c, '集合ポストを見る', '集合ポスト。103のポストはチラシでいっぱいだ。');
+      return look(c, T('common.ext_mailbox.label'), 'common.ext_mailbox');
     case 'ext_vending':
       return SHOPS.vending
-        ? { label: '自販機で飲み物を買う', use: () => c.shop('vending') }
-        : look(c, '自販機を見る', '自販機が白く光っている。');
+        ? { label: T('common.ext_vending.label_buy'), use: () => c.shop('vending') }
+        : look(c, T('common.ext_vending.label'), 'common.ext_vending');
     case 'ext_board':
-      return look(c, '掲示板を見る', '町内会の掲示板だ。');
+      return look(c, T('common.ext_board.label'), 'common.ext_board');
     case 'ext_curve_mirror':
-      return look(c, 'カーブミラーを見る', 'カーブミラーに、ゆがんだ通りが映っている。');
+      return look(c, T('common.ext_curve_mirror.label'), 'common.ext_curve_mirror');
     case 'ext_garbage':
-      return look(c, 'ゴミ捨て場を見る', 'ゴミ捨て場。カラスよけのネットがかかっている。');
+      return look(c, T('common.ext_garbage.label'), 'common.ext_garbage');
     case 'ext_phonebooth':
-      return look(c, '公衆電話を見る', '公衆電話。まだあったのか。');
+      return look(c, T('common.ext_phonebooth.label'), 'common.ext_phonebooth');
     case 'ext_barrier':
-      return look(c, 'バリケードを見る', '工事中で通行止めだ。この先には行けない。');
+      return look(c, T('common.ext_barrier.label'), 'common.ext_barrier');
     case 'ext_door_101':
     case 'ext_door_102':
     case 'ext_door_104':
-      return look(c, 'ドアを見る', '他の部屋のドアだ。');
+      return look(c, T('common.ext_door.label'), 'common.ext_door');
     // ── convenience store ──
     case 'conbini_shelf':
-      return SHOPS.conbini ? { label: '商品を見る', use: () => c.shop('conbini') } : null;
+      return SHOPS.conbini ? { label: T('common.conbini_shelf.label'), use: () => c.shop('conbini') } : null;
     case 'conbini_counter': {
       const clerk = c.game.world.npcs.get('npc_clerk');
       const talk = clerk?.visible ? c.game.interaction.defs.get('npc_clerk') : undefined;
-      if (talk) return { label: '店員に話しかける', use: () => talk.use(), blind: false };
-      return look(c, 'レジ', '店員の姿が見えない。');
+      if (talk) return { label: T('common.conbini_counter.label_talk'), use: () => talk.use(), blind: false };
+      return look(c, T('common.conbini_counter.label'), 'common.conbini_counter');
     }
     case 'conbini_fridge':
-      return look(c, '冷蔵ケースを見る', 'ドリンクがずらりと並んでいる。');
+      return look(c, T('common.conbini_fridge.label'), 'common.conbini_fridge');
     case 'conbini_magazine':
-      return look(c, '雑誌棚を見る', '週刊誌の表紙に「真夏の怪奇特集」の文字。');
+      return look(c, T('common.conbini_magazine.label'), 'common.conbini_magazine');
     case 'conbini_atm':
-      return look(c, 'ATMを見る', 'ATM。残高は、見ないことにした。');
+      return look(c, T('common.conbini_atm.label'), 'common.conbini_atm');
     // ── shrine ──
     case 'shr_saisen':
       return {
-        label: 'お参りする',
+        label: T('common.shr_saisen.label'),
         use: async () => {
           if (c.money >= 5) { c.addMoney(-5); c.sfx('coin', { at: 'shr_saisen' }); await c.wait(0.5); }
           c.sfx('shrine_bell', { at: 'anc_haiden' });
           await c.wait(1.0);
           c.sfx('clap'); await c.wait(0.45); c.sfx('clap');
           await c.wait(0.8);
-          await c.mono('……手を合わせた。');
+          await c.play('common.shr_saisen');
         },
       };
     case 'shr_chozuya':
-      return { label: '手を清める', use: async () => { c.sfx('water_ladle', { at: 'shr_chozuya' }); await c.wait(0.8); await c.mono('冷たい水で手を清めた。'); } };
+      return { label: T('common.shr_chozuya.label'), use: async () => { c.sfx('water_ladle', { at: 'shr_chozuya' }); await c.wait(0.8); await c.play('common.shr_chozuya'); } };
     case 'shr_ema':
-      return look(c, '絵馬を見る', 'たくさんの絵馬が掛かっている。');
+      return look(c, T('common.shr_ema.label'), 'common.shr_ema');
     case 'shr_yuisho':
-      return DOCS.doc_yuisho ? { label: '由緒書きを読む', use: () => c.doc('doc_yuisho') } : look(c, '由緒書きを読む', '神社の由緒が書かれている。');
+      return DOCS.doc_yuisho ? { label: T('common.shr_yuisho.label'), use: () => c.doc('doc_yuisho') } : look(c, T('common.shr_yuisho.label'), 'common.shr_yuisho');
     case 'shr_komainu':
-      return look(c, '狛犬を見る', '狛犬が、こちらをにらんでいる。');
+      return look(c, T('common.shr_komainu.label'), 'common.shr_komainu');
     case 'shr_haiden':
-      return look(c, '拝殿を見る', '古い拝殿。格子戸は閉まっている。');
+      return look(c, T('common.shr_haiden.label'), 'common.shr_haiden');
     case 'shr_shinboku':
-      return look(c, '御神木を見る', '大きな御神木。しめ縄が巻かれている。');
+      return look(c, T('common.shr_shinboku.label'), 'common.shr_shinboku');
     case 'shr_hokora':
-      return look(c, '祠を見る', '林の奥の、小さな祠。');
+      return look(c, T('common.shr_hokora.label'), 'common.shr_hokora');
     case 'shr_kura':
-      return look(c, '蔵を見る', '古い蔵。重い錠前がかかっている。');
+      return look(c, T('common.shr_kura.label'), 'common.shr_kura');
   }
   return null;
 }

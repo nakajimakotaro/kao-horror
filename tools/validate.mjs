@@ -12,7 +12,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const tmp = mkdtempSync(join(tmpdir(), 'kao-validate-'));
 const out = join(tmp, 'ids.mjs');
 try {
-  execFileSync(join(root, 'node_modules', '.bin', 'rolldown'), [join(root, 'tools', 'validate-entry.ts'), '--format', 'esm', '--platform', 'node', '--file', out], { stdio: ['ignore', 'pipe', 'pipe'] });
+  execFileSync(join(root, 'node_modules', '.bin', 'rolldown'), ['-c', join(root, 'tools', 'rolldown.validate.mjs')], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, VALIDATE_OUT: out } });
 } catch (e) {
   console.error('bundle failed:\n' + (e.stderr?.toString() ?? e));
   process.exit(2);
@@ -61,6 +61,32 @@ for (const f of readdirSync(dir).filter((f) => f.endsWith('.ts'))) {
     }
   }
 }
+// ── 台本（script/*.nani）: コードが使うキーが台本にあるか／台本に使われていないブロックがないか ──
+const blockKeys = new Set(IDS.scriptKeys);
+const usedKeys = new Set();
+// 台本のキーらしい文字列リテラルはすべて検査する（look(c, …, 'common.x') のように関数に渡すものも）
+const scriptRe = /'((?:ch\d|common|system|docs|items|endings)\.[A-Za-z0-9_.]+)'/g;
+const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : e.name.endsWith('.ts') ? [join(d, e.name)] : []));
+for (const f of walk(join(root, 'src'))) {
+  if (f.includes(join('src', 'script'))) continue;
+  // content/ は id から `docs.${id}` のようにキーを組み立てる（下の scriptMissing で検査する）
+  const isContent = f.includes(join('src', 'game', 'content'));
+  const src = readFileSync(f, 'utf8');
+  const lineOf = (i) => src.slice(0, i).split('\n').length;
+  for (const m of src.matchAll(scriptRe)) {
+    usedKeys.add(m[1]);
+    if (!blockKeys.has(m[1])) problems.push(`${relative(root, f)}:${lineOf(m.index)}  台本にないキー: '${m[1]}'`);
+  }
+  // キーは文字列リテラルで書く（`ch1.${x}` だと検査できない）
+  if (!isContent) for (const m of src.matchAll(/\b(?:T|TL|lines|c\.play|c\.subLine)\(\s*`/g)) problems.push(`${relative(root, f)}:${lineOf(m.index)}  台本のキーはテンプレート文字列にしない`);
+}
+for (const d of IDS.scriptDupes) problems.push(`script/${d}`);
+for (const k of IDS.scriptMissing) problems.push(`src/game/content: 台本にないキー: '${k}'`);
+const contentFile = /^(docs|items|endings)\./;
+const unused = IDS.scriptKeys.filter((k) => !usedKeys.has(k) && k !== 'system.speakers' && !(contentFile.test(k) && !IDS.scriptMissing.length && IDS.contentKeys.includes(k)));
+for (const k of unused) console.log(`（注意）台本のブロック '${k}' はコードから使われていない`);
+for (const b of IDS.scriptSpeakerLike) problems.push(`script/${b}`);
+
 for (const c of IDS.chapters) if (c.spawn && !S.spawn.has(c.spawn)) problems.push(`chapter ${c.id}: unknown spawn '${c.spawn}'`);
 for (const it of IDS.shopItems) if (!S.item.has(it)) problems.push(`shops.ts: unknown item '${it}'`);
 const missingModels = [...new Set(Object.values(IDS.propModels))].filter((m) => !IDS.models.includes(m));
@@ -71,4 +97,4 @@ if (problems.length) {
   console.log(`\n✗ ${problems.length} problem(s)`);
   process.exit(1);
 }
-console.log(`✓ chapters reference only known ids (${IDS.chapters.length} chapters, ${IDS.docs.length} docs, ${IDS.items.length} items, ${IDS.sounds.length} sounds)`);
+console.log(`✓ chapters reference only known ids (${blockKeys.size} script blocks, ${IDS.chapters.length} chapters, ${IDS.docs.length} docs, ${IDS.items.length} items, ${IDS.sounds.length} sounds)`);

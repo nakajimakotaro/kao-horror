@@ -19,6 +19,7 @@ npm run validate   # 章スクリプトが参照するID（小道具・アンカ
 | `src/world/` | `layout.ts`(町全体の配置データ) / `World.ts`(構築・照明・NPC) / `Prop.ts`(扉などの可動部) / `Lights.ts` / `Sky.ts` / `textures.ts`(構造用キャンバステクスチャ) / `textures_content.ts`(張り紙・看板など物語用テクスチャ) / `catalog.json`(3Dモデル仕様) |
 | `src/audio/` | `AudioEngine.ts` / `synth.ts`(合成ツール) / `sounds.ts`(最小セット) / `sounds_lib.ts`(全効果音ライブラリ) |
 | `src/game/` | `Game.ts`(全体進行) / `Ctx.ts`(**章スクリプトAPI**) / `Chapter.ts` / `defaults.ts`(既定のインタラクト) / `face/`(「顔」) / `Flashlight.ts` / `Interaction.ts` / `State.ts` |
+| `script/*.nani` | 台本。ゲームに出る文章はすべてここ（書式は `script/README.md`）。`src/script/` が読み込み（`T` / `TL` / `c.play` / `c.subLine`） |
 | `src/game/chapters/` | 章ごとのスクリプト。`index.ts` の配列順が物語順 |
 | `src/game/content/` | `items.ts` `docs.ts` `shops.ts` `endings.ts` `meta.ts`(タイトル・TIPS・クレジット) |
 | `src/ui/UI.ts`, `src/styles.css` | DOM オーバーレイ UI |
@@ -56,7 +57,8 @@ export const ch1_night: ChapterDef = {
 ### 主なメソッド（すべて `src/game/Ctx.ts` 参照）
 
 - 状態: `c.get(k)` `c.is(k)` `c.set(k, v=true)` `c.inc(k)` / `c.has(item)` `c.count(item)` `c.give(item, n?, silent?)` `c.take(item)` / `c.money` `c.addMoney(n)` / `c.battery`
-- 台詞: `await c.say('なお', 'ごめん、こんな時間に')`（配列で複数ページ）/ `await c.mono('……つかない。')`（主人公の心の声。表示時に（）が付くので**本文に括弧を書かない**）/ `await c.narrate('…')`（中央のナレーション）
+- 文章はコードに直接書かず `script/*.nani` に置く: `await c.play('ch1.washer_face')`（台本のブロックを台詞として流す。`なお: …`= say、`ナレ: …`= narrate、それ以外 = mono）／`T('ch1.obj_light')`（1つの文字列）／`TL('ch1.choice_x')`（行の配列）／`c.subLine('ch3.sub_x', sec)`（字幕）。キーは必ず文字列リテラルで書く（`npm run validate` が台本との対応を検査する）
+- 台詞（下回り）: `await c.say('なお', 'ごめん、こんな時間に')`（配列で複数ページ）/ `await c.mono('……つかない。')`（主人公の心の声。表示時に（）が付くので**本文に括弧を書かない**）/ `await c.narrate('…')`（中央のナレーション）
 - 選択肢: `const i = await c.choice(['出る', '出ない'], '問い（省略可）')`（0始まり）
 - 文書: `await c.doc('doc_id')`（`content/docs.ts`）。読むと自動で `read_<docId>` フラグが立つ
 - UI: `c.objective('懐中電灯を探す' | null)` / `c.toast('…')` / `await c.card('二日目', '正午')` / `await c.fadeOut(1)` `await c.fadeIn(1)` / `await c.wait(秒)` / `await c.shop('conbini')`

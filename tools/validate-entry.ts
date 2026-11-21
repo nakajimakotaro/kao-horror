@@ -11,6 +11,9 @@ import { ITEMS } from '../src/game/content/items';
 import { SHOPS } from '../src/game/content/shops';
 import { ENDINGS } from '../src/game/content/endings';
 import { CHAPTERS } from '../src/game/chapters';
+import { allBlocks, duplicateKeys, speakers } from '../src/script';
+import { unknownSpeaker } from '../src/script/parse';
+import { META } from '../src/game/content/meta';
 
 const props = LAYOUT.props.map((p) => p.id);
 const interact = new Set<string>();
@@ -35,5 +38,49 @@ export const IDS = {
   shops: Object.keys(SHOPS),
   shopItems: Object.values(SHOPS).flatMap((s) => s.items.map((i) => i.item)),
   endings: Object.keys(ENDINGS),
+  scriptKeys: allBlocks().map((b) => b.key),
+  scriptDupes: duplicateKeys(),
+  scriptMissing: missingInContent(),
+  contentKeys: contentKeys(),
+  scriptSpeakerLike: speakerLike(),
   chapters: CHAPTERS.map((c) => ({ id: c.id, spawn: typeof c.spawn === 'string' ? c.spawn : null })),
 };
+
+/** `名前: …` の形なのに話者表に名前がない行（モノローグとして表示されてしまう）。意図したモノローグなら行頭に \\ */
+function speakerLike(): string[] {
+  const sp = new Set(speakers());
+  const out: string[] = [];
+  for (const b of allBlocks()) {
+    if (!/^ch\d|^common$/.test(b.file)) continue;
+    b.lines.forEach((l, i) => {
+      const name = unknownSpeaker(l, sp);
+      if (name) out.push(`${b.file}.nani ${b.key}（${b.line + i + 1}行目あたり）: 話者「${name}」が system.nani の speakers にない（モノローグなら行頭に \\）`);
+    });
+  }
+  return out;
+}
+
+/** content/*.ts の文字列で台本が見つからなかったもの（T() は【キー】を返す） */
+function missingInContent(): string[] {
+  const out: string[] = [];
+  const walk = (v: unknown): void => {
+    if (typeof v === 'string') { const m = /^【(.+)】$/.exec(v); if (m) out.push(m[1]); }
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') Object.values(v).forEach(walk);
+  };
+  walk([DOCS, ITEMS, SHOPS, ENDINGS, META]);
+  return out;
+}
+
+/** content/*.ts が id から組み立てて使っている台本のキー */
+function contentKeys(): string[] {
+  const k: string[] = [];
+  for (const id of Object.keys(DOCS)) k.push(`docs.${id}.title`, `docs.${id}`);
+  for (const id of Object.keys(ENDINGS)) k.push(`endings.${id}.name`, `endings.${id}.label`, `endings.${id}`);
+  for (const id of Object.keys(ITEMS)) k.push(`items.${id}.name`, `items.${id}.desc`);
+  for (const [sid, s] of Object.entries(SHOPS)) {
+    k.push(`items.shop_${sid}.title`);
+    for (const it of s.items) k.push(`items.shop_${sid}.${it.item}.name`, `items.shop_${sid}.${it.item}.desc`);
+  }
+  return k;
+}
