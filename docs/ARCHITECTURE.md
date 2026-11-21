@@ -57,7 +57,7 @@ export const ch1_night: ChapterDef = {
 ### 主なメソッド（すべて `src/game/Ctx.ts` 参照）
 
 - 状態: `c.get(k)` `c.is(k)` `c.set(k, v=true)` `c.inc(k)` / `c.has(item)` `c.count(item)` `c.give(item, n?, silent?)` `c.take(item)` / `c.money` `c.addMoney(n)` / `c.battery`
-- 文章はコードに直接書かず `script/*.nani` に置く: `await c.play('ch1.washer_face')`（台本のブロックを台詞として流す。`なお: …`= say、`ナレ: …`= narrate、それ以外 = mono）／`T('ch1.obj_light')`（1つの文字列）／`TL('ch1.choice_x')`（行の配列）／`c.subLine('ch3.sub_x', sec)`（字幕）。キーは必ず文字列リテラルで書く（`npm run validate` が台本との対応を検査する）
+- 文章はコードに直接書かず `script/*.nani` に置く: `await c.play('ch1.washer_face')`（台本のブロックを台詞として流す。`nao: …`= say（話者 ID → 表示名は `script/system.nani` の speakers）、`narr: …`= narrate、それ以外 = mono）／`T('ch1.obj_light')`（1つの文字列）／`TL('ch1.choice_x')`（行の配列）／`c.subLine('ch3.sub_x', sec)`（字幕）。キーは必ず文字列リテラルで書く（`npm run validate` が台本との対応を検査する）
 - 台詞（下回り）: `await c.say('なお', 'ごめん、こんな時間に')`（配列で複数ページ）/ `await c.mono('……つかない。')`（主人公の心の声。表示時に（）が付くので**本文に括弧を書かない**）/ `await c.narrate('…')`（中央のナレーション）
 - 選択肢: `const i = await c.choice(['出る', '出ない'], '問い（省略可）')`（0始まり）
 - 文書: `await c.doc('doc_id')`（`content/docs.ts`）。読むと自動で `read_<docId>` フラグが立つ

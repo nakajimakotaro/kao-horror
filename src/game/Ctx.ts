@@ -119,7 +119,7 @@ export class Ctx {
   }
   /**
    * 台本（script/*.nani）のブロックを台詞として流す。続けて同じ話者の行は1つの会話ウィンドウにまとめる。
-   * `なお: …` = c.say / `ナレ: …` = c.narrate / それ以外 = c.mono
+   * `nao: …` = c.say（表示名は system.nani の speakers）/ `narr: …` = c.narrate / それ以外 = c.mono
    */
   async play(key: string, vars?: Record<string, string | number>): Promise<void> {
     const ls = scriptLines(key, vars);

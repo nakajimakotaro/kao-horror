@@ -3,7 +3,7 @@
 //   TL('system.tips')                   … ブロックを行の配列で（空行は除く）
 //   lines('ch1.washer_face')            … 台詞として読む（話者・モノローグ・ナレ）→ Ctx.play() が使う
 // 見つからないキーは【キー】を返して警告する（ゲームは止めない）。
-import { type Block, type Line, fill, parseLine, parseScript, unescape } from './parse';
+import { type Block, type Line, fill, parseLine, parseScript, parseSpeakers, unescape } from './parse';
 
 const FILES = import.meta.glob('/script/*.nani', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
@@ -20,7 +20,8 @@ for (const [path, src] of Object.entries(FILES)) {
   }
 }
 
-const SPEAKERS = new Set((BLOCKS.get('system.speakers')?.lines ?? []).map((l) => l.trim()).filter(Boolean));
+/** 話者 ID → 表示名（system.nani の speakers） */
+const SPEAKERS = parseSpeakers(BLOCKS.get('system.speakers')?.lines ?? []);
 
 type Vars = Record<string, string | number>;
 
@@ -58,8 +59,8 @@ export function lines(key: string, vars?: Vars): Line[] {
 export function allBlocks(): Block[] {
   return [...BLOCKS.values()];
 }
-export function speakers(): string[] {
-  return [...SPEAKERS];
+export function speakers(): ReadonlyMap<string, string> {
+  return SPEAKERS;
 }
 export function duplicateKeys(): string[] {
   return DUPES;

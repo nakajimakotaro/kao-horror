@@ -46,15 +46,15 @@ export const IDS = {
   chapters: CHAPTERS.map((c) => ({ id: c.id, spawn: typeof c.spawn === 'string' ? c.spawn : null })),
 };
 
-/** `名前: …` の形なのに話者表に名前がない行（モノローグとして表示されてしまう）。意図したモノローグなら行頭に \\ */
+/** `id: …` の形なのに話者表に ID がない行（モノローグとして表示されてしまう）。意図したモノローグなら行頭に \\ */
 function speakerLike(): string[] {
-  const sp = new Set(speakers());
+  const sp = speakers();
   const out: string[] = [];
   for (const b of allBlocks()) {
     if (!/^ch\d|^common$/.test(b.file)) continue;
     b.lines.forEach((l, i) => {
       const name = unknownSpeaker(l, sp);
-      if (name) out.push(`${b.file}.nani ${b.key}（${b.line + i + 1}行目あたり）: 話者「${name}」が system.nani の speakers にない（モノローグなら行頭に \\）`);
+      if (name) out.push(`${b.file}.nani ${b.key}（${b.line + i + 1}行目あたり）: 話者 ID「${name}」が system.nani の speakers にない（モノローグなら行頭に \\）`);
     });
   }
   return out;

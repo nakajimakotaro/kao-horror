@@ -16,7 +16,7 @@ export interface Block {
  * 台本ファイル1つを読む。
  * - `# 名前` … ブロックの始まり（Naninovel のラベル）。最初の空白までが名前
  * - `; 〜` … コメント（読み飛ばす）
- * - 行頭の `\` … 次の1文字を特別扱いしない（`\#` `\;` `\なお: …` など）。`\` 自体は消える
+ * - 行頭の `\` … 次の1文字を特別扱いしない（`\#` `\;` `\nao: …` など）。`\` 自体は消える
  * - 最初の `#` より前の行は読み飛ばす
  */
 export function parseScript(file: string, src: string): Block[] {
@@ -54,31 +54,45 @@ export interface Line {
   text: string;
 }
 
-/** `名前: 台詞` の形。コロンは半角・全角どちらでも、後ろの空白はあってもなくてもよい */
-const SPEAKER_LINE = /^([^\s:：]{1,16})[:：][ 　]?([\s\S]*)$/;
+/** `nao: 台詞` の形。話者はアルファベットの ID。コロンは半角・全角どちらでも、後ろの空白はあってもなくてもよい */
+const SPEAKER_LINE = /^([A-Za-z][A-Za-z0-9_]*)[ \t]*[:：][ 　]?([\s\S]*)$/;
+
+/** 話者 ID → 画面に出す名前（system.nani の speakers） */
+export type SpeakerTable = ReadonlyMap<string, string>;
+
+/** system.nani の speakers ブロック（`nao: なお` の行）を読む */
+export function parseSpeakers(lines: readonly string[]): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const l of lines) {
+    const r = /^([A-Za-z][A-Za-z0-9_]*)[ \t]*[:：][ 　]?(.+)$/.exec(l.trim());
+    if (r) m.set(r[1], r[2].trim());
+  }
+  return m;
+}
 
 /**
  * 台詞1行を読む。
- * - `なお: 起きてる？` … 話者つきの台詞（話者は system.speakers に載っている名前だけ）
- * - `ナレ: ……` … ナレーション（中央表示）
+ * - `nao: 起きてる？` … 話者つきの台詞（話者 ID は system.nani の speakers に載っているものだけ）
+ * - `narr: ……` … ナレーション（中央表示）
  * - それ以外 … 主人公（透）のモノローグ
  */
-export function parseLine(raw: string, speakers: ReadonlySet<string>): Line {
+export function parseLine(raw: string, speakers: SpeakerTable): Line {
   if (!raw.startsWith('\\')) {
     const m = SPEAKER_LINE.exec(raw);
     if (m) {
-      if (m[1] === 'ナレ') return { kind: 'narr', speaker: null, text: m[2] };
-      if (speakers.has(m[1])) return { kind: 'talk', speaker: m[1], text: m[2] };
+      if (m[1] === 'narr') return { kind: 'narr', speaker: null, text: m[2] };
+      const name = speakers.get(m[1]);
+      if (name !== undefined) return { kind: 'talk', speaker: name, text: m[2] };
     }
   }
   return { kind: 'mono', speaker: null, text: unescape(raw) };
 }
 
-/** 話者名らしいのに話者表にない（打ち間違いかもしれない）行の名前。モノローグでよければ行頭に \\ */
-export function unknownSpeaker(raw: string, speakers: ReadonlySet<string>): string | null {
+/** 話者 ID らしいのに話者表にない（打ち間違いかもしれない）行の ID。モノローグでよければ行頭に \\ */
+export function unknownSpeaker(raw: string, speakers: SpeakerTable): string | null {
   if (raw.startsWith('\\')) return null;
-  const m = /^([^\s:：、。…！？「」（）・]{1,8})[:：]/.exec(raw);
-  if (!m || m[1] === 'ナレ' || speakers.has(m[1])) return null;
+  const m = SPEAKER_LINE.exec(raw);
+  if (!m || m[1] === 'narr' || speakers.has(m[1])) return null;
   return m[1];
 }
 
